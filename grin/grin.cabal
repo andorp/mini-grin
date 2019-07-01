@@ -1,0 +1,275 @@
+name:                grin
+version:             0.1.0.0
+-- synopsis:
+-- description:
+homepage:            https://github.com/githubuser/grin#readme
+license:             BSD3
+license-file:        LICENSE
+author:              Andor Penzes, Csaba Hruska
+maintainer:          andor.penzes@gmail.com
+copyright:           2017 Andor Penzes, Csaba Hruska
+category:            Compiler
+build-type:          Simple
+--extra-source-files:  README.md
+cabal-version:       >=1.10
+
+library
+  hs-source-dirs:      src
+  default-extensions:  OverloadedStrings
+  exposed-modules:
+--    AbstractInterpretation.CreatedBy.Result
+--    AbstractInterpretation.CreatedBy.Readback
+--    AbstractInterpretation.CreatedBy.Util
+--    AbstractInterpretation.CreatedBy.CodeGen
+--    AbstractInterpretation.CreatedBy.CodeGenBase
+--    AbstractInterpretation.CreatedBy.Pretty
+--    AbstractInterpretation.HeapPointsTo.CodeGen
+--    AbstractInterpretation.HeapPointsTo.CodeGenBase
+--    AbstractInterpretation.HeapPointsTo.Pretty
+--    AbstractInterpretation.HeapPointsTo.Result
+--    AbstractInterpretation.Sharing.CodeGen
+--    AbstractInterpretation.Sharing.Result
+--    AbstractInterpretation.Sharing.Pretty
+--    AbstractInterpretation.LiveVariable.CodeGen
+--    AbstractInterpretation.LiveVariable.CodeGenBase
+--    AbstractInterpretation.LiveVariable.Result
+--    AbstractInterpretation.LiveVariable.Pretty
+--    AbstractInterpretation.IR
+--    AbstractInterpretation.BinaryIR
+--    AbstractInterpretation.PrettyIR
+--    AbstractInterpretation.BinaryResult
+--    AbstractInterpretation.ReduceCpp
+--    AbstractInterpretation.Reduce
+--    AbstractInterpretation.Util
+--    AbstractInterpretation.OptimiseAbstractProgram
+--    AbstractInterpretation.Model
+--    Grin.Grin
+    Grin.Exp
+    Grin.Interpreter.Base
+    Grin.Interpreter.Definitional
+--    Grin.TH
+--    Grin.Lint
+--    Grin.Parse
+--    Grin.Parse.AST
+--    Grin.Parse.Basic
+--    Grin.Parse.TypeEnv
+--    Grin.Pretty
+--    Grin.PrettyLint
+--    Grin.Statistics
+--    Grin.TypeCheck
+--    Grin.TypeEnv
+--    Grin.EffectMap
+--    Grin.PrimOpsPrelude
+--    Grin.Nametable
+--    Grin.Research
+--    Pipeline.Eval
+--    Pipeline.Optimizations
+--    Pipeline.Pipeline
+--    Reducer.Base
+--    Reducer.IO
+--    Reducer.LLVM.Base
+--    Reducer.LLVM.CodeGen
+--    Reducer.LLVM.InferType
+--    Reducer.LLVM.JIT
+--    Reducer.LLVM.PrimOps
+--    Reducer.LLVM.TypeGen
+--    Reducer.PrimOps
+--    Reducer.Pure
+--    Test.Assertions
+--    Test.Check
+--    Test.Grammar
+--    Test.IO
+--    Test.Test
+--    Test.Util
+--    Transformations.BindNormalisation
+--    Transformations.CountVariableUse
+--    Transformations.EffectMap
+--    Transformations.GenerateEval
+--    Transformations.MangleNames
+--    Transformations.Names
+--    Transformations.StaticSingleAssignment
+--    Transformations.UnitPropagation
+--    Transformations.Util
+--    Transformations.Optimising.ArityRaising
+--    Transformations.Optimising.CaseCopyPropagation
+--    Transformations.Optimising.CaseHoisting
+--    Transformations.Optimising.ConstantFolding
+--    Transformations.Optimising.ConstantPropagation
+--    Transformations.Optimising.CopyPropagation
+--    Transformations.Optimising.CSE
+--    Transformations.Optimising.DeadDataElimination
+--    Transformations.Optimising.DeadFunctionElimination
+--    Transformations.Optimising.DeadParameterElimination
+--    Transformations.Optimising.DeadVariableElimination
+--    Transformations.Optimising.EvaluatedCaseElimination
+--    Transformations.Optimising.GeneralizedUnboxing
+--    Transformations.Optimising.Inlining
+--    Transformations.Optimising.SimpleDeadFunctionElimination
+--    Transformations.Optimising.SimpleDeadVariableElimination
+--    Transformations.Optimising.SimpleDeadParameterElimination
+--    Transformations.Optimising.SparseCaseOptimisation
+--    Transformations.Optimising.TrivialCaseElimination
+--    Transformations.Optimising.UpdateElimination
+--    Transformations.Optimising.NonSharedElimination
+--    Transformations.Simplifying.CaseSimplification
+--    Transformations.Simplifying.ProducerNameIntroduction
+--    Transformations.Simplifying.BindingPatternSimplification
+--    Transformations.Simplifying.RegisterIntroduction
+--    Transformations.Simplifying.RightHoistFetch2
+--    Transformations.Simplifying.SplitFetch
+--    Transformations.Simplifying.Vectorisation
+--    Transformations.Simplifying.Vectorisation2
+--    Lens.Micro.Extra
+
+  build-depends:
+    base >=4.11,
+    containers,
+--    bimap,
+    mtl,
+--    comonad,
+--    megaparsec,
+--    pretty-show,
+    vector,
+    deepseq,
+    recursion-schemes,
+--    ansi-wl-pprint,
+--    monad-gen,
+--    free,
+    bytestring,
+--    llvm-hs ==7.*,
+--    llvm-hs-pure ==7.*,
+--    llvm-hs-pretty >=0.6.1,
+--    inline-c,
+--    filepath,
+    transformers,
+    microlens,
+    microlens-mtl,
+    microlens-th,
+    microlens-platform,
+--    process,
+    text,
+--    time,
+--    optparse-applicative,
+--    directory,
+--    pretty-simple,
+--    functor-infix,
+--    generic-random,
+--    hspec,
+--    hspec-core,
+--    extra,
+--    logict,
+--    QuickCheck,
+--    quickcheck-instances,
+--    neat-interpolation,
+--    template-haskell,
+--    Diff,
+--    random,
+--    set-extra,
+--    deepseq,
+    binary
+
+  default-language:    Haskell2010
+
+executable grin
+  hs-source-dirs:      app
+  main-is:             GrinCLI.hs
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  build-depends:       base >=4.11
+                     , grin
+--                     , recursion-schemes
+--                     , ansi-wl-pprint
+--                     , megaparsec
+--                     , containers
+--                     , process
+--                     , pretty-show
+--                     , llvm-hs-pretty
+--                     , text
+--                     , filepath
+                     , transformers
+--                     , microlens
+--                     , microlens-th
+--                     , microlens-mtl
+--                     , microlens-platform
+--                     , optparse-applicative
+--                     , directory
+--                     , binary
+
+  default-language:    Haskell2010
+
+test-suite grin-test
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test
+  main-is:             Spec.hs
+  default-extensions:  OverloadedStrings
+  build-depends:       base >=4.11
+--                     , containers
+--                     , filepath
+--                     , functor-infix
+--                     , grin
+                     , hspec
+                     , hspec-core
+                     , hspec-discover
+--                     , QuickCheck
+--                     , deepseq
+--                     , vector
+--                     , text
+--                     , random
+--                     , microlens
+                     , transformers
+--                     , mtl
+--                     , ansi-wl-pprint
+--                     , directory
+--                     , inline-c
+
+  other-modules:
+--                     Transformations.Simplifying.RegisterIntroductionSpec
+--                     Transformations.Simplifying.CaseSimplificationSpec
+--                     Transformations.Simplifying.SplitFetchSpec
+--                     Transformations.Simplifying.RightHoistFetchSpec
+--                     Transformations.Simplifying.VectorisationSpec
+--                     Transformations.Simplifying.ProducerNameIntroductionSpec
+--                     Transformations.Simplifying.BindingPatternSimplificationSpec
+--                     Transformations.Optimising.CaseCopyPropagationSpec
+--                     Transformations.Optimising.CopyPropagationSpec
+--                     Transformations.Optimising.ConstantFoldingSpec
+--                     Transformations.Optimising.ConstantPropagationSpec
+--                     Transformations.Optimising.EvaluatedCaseEliminationSpec
+--                     Transformations.Optimising.TrivialCaseEliminationSpec
+--                     Transformations.Optimising.SparseCaseOptimisationSpec
+--                     Transformations.Optimising.UpdateEliminationSpec
+--                     Transformations.Optimising.CSESpec
+--                     Transformations.Optimising.GeneralizedUnboxingSpec
+--                     Transformations.Optimising.ArityRaisingSpec
+--                     Transformations.Optimising.SimpleDeadFunctionEliminationSpec
+--                     Transformations.Optimising.SimpleDeadParameterEliminationSpec
+--                     Transformations.Optimising.SimpleDeadVariableEliminationSpec
+--                     Transformations.Optimising.InliningSpec
+--                     Transformations.Optimising.CaseHoistingSpec
+--                     Transformations.Optimising.DeadDataEliminationSpec
+--                     Transformations.Optimising.DeadFunctionEliminationSpec
+--                     Transformations.Optimising.DeadParameterEliminationSpec
+--                     Transformations.Optimising.DeadVariableEliminationSpec
+--                     Transformations.StaticSingleAssignmentSpec
+--                     Transformations.BindNormalisationSpec
+--                     Transformations.ConfluenceSpec
+--                     Transformations.MangleNamesSpec
+--                     Samples.SumListSpec
+--                     Samples.ArityFullRemoveSpec
+--                     LintSpec
+--                     TestSpec
+--                     PipelineSpec
+--                     ParserSpec
+--                     PrimOpsSpec
+--                     NametableSpec
+--                     AbstractInterpretation.HptSpec
+--                     AbstractInterpretation.LiveVariableSpec
+--                     AbstractInterpretation.IRSpec
+--                     AbstractInterpretation.OptimiseAbstractProgramSpec
+--                     AbstractInterpretation.SharingSpec
+--                     AbstractInterpretation.CreatedBySpec
+--                     Test.Hspec.PipelineExample
+  default-language:    Haskell2010
+
+source-repository head
+  type:     git
+  location: https://github.com/andorp/mini-grin
