@@ -1,0 +1,43 @@
+sudo: false
+dist: xenial
+language: c
+
+env:
+  global:
+    - GCC=gcc-5
+    - GXX=g++-5
+    - LLVM_VER=7.1.0
+
+cache:
+  directories:
+    - $HOME/.stack/
+
+addons:
+  apt:
+    packages:
+      - gcc-5
+      - g++-5
+      - libgmp-dev
+      - llvm-7-dev
+    sources:
+      - llvm-toolchain-xenial-7
+      - ubuntu-toolchain-r-test
+
+before_install:
+  - mkdir -p ~/.local/bin
+  - export PATH=~/.local/bin:$PATH
+  - travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
+  - export CC=/usr/bin/$GCC
+  - export CXX=/usr/bin/$GXX
+
+install:
+  - stack update
+  - travis_wait 120 stack --no-terminal --install-ghc test --only-dependencies
+
+script:
+  - mkdir .output
+  - stack --no-terminal test --coverage
+
+#after_script:
+#  - travis_retry curl -L https://github.com/rubik/stack-hpc-coveralls/releases/download/v0.0.4.0/shc-linux-x64-8.0.1.tar.bz2 | tar -xj
+#  - ./shc grin grin-test
