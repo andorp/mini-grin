@@ -47,6 +47,7 @@ library
     Grin.Exp
     Grin.Interpreter.Base
     Grin.Interpreter.Definitional
+    Grin.Interpreter.Abstract
 --    Grin.TH
 --    Grin.Lint
 --    Grin.Parse
@@ -149,7 +150,7 @@ library
 --    process,
     text,
 --    time,
-    optparse-applicative,
+--    optparse-applicative,
 --    directory,
 --    pretty-simple,
 --    functor-infix,
