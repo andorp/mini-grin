@@ -149,7 +149,7 @@ library
 --    process,
     text,
 --    time,
---    optparse-applicative,
+    optparse-applicative,
 --    directory,
 --    pretty-simple,
 --    functor-infix,

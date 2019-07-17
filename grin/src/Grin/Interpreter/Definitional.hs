@@ -1,14 +1,17 @@
 {-# LANGUAGE LambdaCase, GeneralizedNewtypeDeriving, InstanceSigs, TypeFamilies, TemplateHaskell, ScopedTypeVariables #-}
 module Grin.Interpreter.Definitional where
 
+import Prelude hiding (fail)
+import Control.Monad (forM_, when)
 import Control.Monad.Fail
 import Control.Monad.Trans (MonadIO(liftIO), lift)
 import Control.Monad.Reader (MonadReader(..))
 import Control.Monad.State (MonadState(..))
 import Control.Monad.Trans.Reader hiding (ask, local)
 import Control.Monad.Trans.State hiding (state, get)
-import Data.Maybe (fromJust, mapMaybe, fromMaybe)
-import Grin.Exp hiding (Loc)
+import Data.Maybe (fromJust, mapMaybe, fromMaybe, isNothing)
+import Grin.Exp hiding (Loc, Val)
+import qualified Grin.Exp as Grin (Val)
 import Grin.Interpreter.Base
 import Lens.Micro.Platform
 import qualified Data.Map as Map
@@ -44,10 +47,6 @@ data Node = Node Tag [SVal]
 newtype Loc = Loc Int
   deriving (Eq, Ord, Show)
 
-instance Address Loc where
-  addrFromInt = Loc
-  intFromAddr (Loc a) = a
-
 data DVal
   = DNode Node
   | DVal  SVal
@@ -63,24 +62,25 @@ data DefEnv m v = DefEnv
 makeLenses ''DefEnv
 
 newtype DefinitionalT m a = DefinitionalT
-  { definitionalT :: StateT (Store Loc DVal) (ReaderT (DefEnv m DVal) m) a
+  { definitionalT :: StateT (Store Loc Node) (ReaderT (DefEnv m DVal) m) a
   }
-  deriving (Functor, Applicative, Monad, MonadFail, MonadIO, MonadReader (DefEnv m DVal), MonadState (Store Loc DVal))
+  deriving (Functor, Applicative, Monad, MonadFail, MonadIO, MonadReader (DefEnv m DVal), MonadState (Store Loc Node))
 
 runDefinitionalT :: (Monad m) => Exp -> [(Name, [DVal] -> m DVal)] -> DefinitionalT m a -> m a
-runDefinitionalT prog ops n = runReaderT (evalStateT (definitionalT n) (Store mempty)) definitional
+runDefinitionalT prog ops n = runReaderT (evalStateT (definitionalT n) emptyStore) definitional
   where
-    (Program _ defs) = prog
     definitional =
       DefEnv
-        (Map.fromList ((\d@(Def n _ _) -> (n,d)) <$> defs))
+        (programToDefs prog)
         (Map.fromList ops)
         emptyEnv
 
 instance (Applicative m, Monad m, MonadFail m) => Interpreter (DefinitionalT m) where
-  type IntpVal (DefinitionalT m) = DVal
-  type IAddr   (DefinitionalT m) = Loc
-  value :: Val -> (DefinitionalT m) DVal
+  type Val     (DefinitionalT m) = DVal
+  type HeapVal (DefinitionalT m) = Node
+  type Addr    (DefinitionalT m) = Loc
+
+  value :: Grin.Val -> DefinitionalT m DVal
   value = \case
     (ConstTagNode t0 ps) -> do
       p  <- askEnv
@@ -92,26 +92,35 @@ instance (Applicative m, Monad m, MonadFail m) => Interpreter (DefinitionalT m) 
     (Lit l) -> pure $ DVal $ lit2sval l
     Unit    -> pure $ DUnit
 
-  val2addr :: DVal -> (DefinitionalT m) Loc
-  val2addr (DVal (SLoc l)) = pure l
-  val2addr other           = error $ show ("val2addr", other)
+  val2addr :: DVal -> DefinitionalT m Loc
+  val2addr = \case
+    (DVal (SLoc l)) -> pure l
+    other           -> error $ show ("val2addr", other)
 
-  addr2val :: Loc -> (DefinitionalT m) DVal
+  addr2val :: Loc -> DefinitionalT m DVal
   addr2val = pure . DVal . SLoc
+
+  heapVal2val :: Node -> DefinitionalT m DVal
+  heapVal2val = pure . DNode
+
+  val2heapVal :: DVal -> DefinitionalT m Node
+  val2heapVal = \case
+    DNode n -> pure n
+    other   -> error $ show ("val2HeapVal", other)
 
   unit :: DefinitionalT m DVal
   unit = pure DUnit
 
-  matchNode :: DVal -> (Tag, [Name]) -> DefinitionalT m [(Name, DVal)]
-  matchNode (DNode (Node t0 vs)) (t1, ps)
+  bindPattern :: DVal -> (Tag, [Name]) -> DefinitionalT m [(Name, DVal)]
+  bindPattern (DNode (Node t0 vs)) (t1, ps)
     | t0 == t1  = pure (ps `zip` (DVal <$> vs))
-    | otherwise = error "matchNode"
+    | otherwise = error "bindPattern"
 
   askEnv :: (DefinitionalT m) (Env DVal)
   askEnv = _defEnv <$> ask
 
   localEnv :: Env DVal -> (DefinitionalT m) DVal -> (DefinitionalT m) DVal
-  localEnv e = local (defEnv %~ (const e))
+  localEnv e = local (defEnv .~ e)
 
   lookupFun :: Name -> (DefinitionalT m) Exp
   lookupFun funName = (fromMaybe (error $ "Missing:" ++ show funName) . Map.lookup funName . _defFuns) <$> ask
@@ -121,11 +130,11 @@ instance (Applicative m, Monad m, MonadFail m) => Interpreter (DefinitionalT m) 
 
   operation :: Name -> [DVal] -> (DefinitionalT m) DVal
   operation funName params = DefinitionalT $ do
-    op <- lift ((fromJust . Map.lookup funName . _defOps) <$> ask) -- TODO: Fix lifts
+    op <- lift ((fromJust . Map.lookup funName . _defOps) <$> ask)
     lift (lift (op params))
 
-  ecase :: (Exp -> (DefinitionalT m) DVal) -> DVal -> [Alt] -> (DefinitionalT m) DVal
-  ecase ev v alts = evalBranch v $ head $ filter (\(Alt p b) -> match v p) alts
+  evalCase :: (Exp -> (DefinitionalT m) DVal) -> DVal -> [Alt] -> (DefinitionalT m) DVal
+  evalCase ev v alts = evalBranch v $ head $ filter (\(Alt p b) -> match v p) alts
     where
       match :: DVal -> CPat -> Bool
       match DUnit                 p               = error $ show ("matching failure:", DUnit, p)
@@ -143,12 +152,38 @@ instance (Applicative m, Monad m, MonadFail m) => Interpreter (DefinitionalT m) 
         localEnv p' (ev body)
       evalBranch _                    (Alt _               body) = ev body
 
-  getStore :: DefinitionalT m (Store Loc DVal)
+  funCall :: (Exp -> DefinitionalT m DVal) -> Name -> [DVal] -> DefinitionalT m DVal
+  funCall ev fn vs = do
+    (Def _ fps body) <- lookupFun fn
+    let p' = extendEnv emptyEnv (fps `zip` vs)
+    localEnv p' (ev body)
+
+  getStore :: DefinitionalT m (Store Loc Node)
   getStore = DefinitionalT get
 
-  updateStore :: (Store Loc DVal -> Store Loc DVal) -> DefinitionalT m ()
+  updateStore :: (Store Loc Node -> Store Loc Node) -> DefinitionalT m ()
   updateStore f = state (\s -> ((), f s))
 
+  nextLocStore :: Store Loc Node -> DefinitionalT m Loc
+  nextLocStore (Store s) = pure $ Loc $ Map.size s
+
+  allocStore :: DefinitionalT m DVal
+  allocStore = do
+    s <- getStore
+    a <- nextLocStore s
+    addr2val a
+
+  findStore :: DVal -> DefinitionalT m DVal
+  findStore l = do
+    s <- getStore
+    a <- val2addr l
+    heapVal2val $ storeFind s a
+
+  extStore :: DVal -> DVal -> DefinitionalT m ()
+  extStore l n = do
+    a <- val2addr l
+    v <- val2heapVal n
+    updateStore (storeExt a v)
 
 evalDefinitional :: (Monad m, MonadFail m, MonadIO m) => Program -> m DVal
 evalDefinitional prog = do
@@ -159,15 +194,19 @@ evalDefinitional prog = do
             , ("prim_int_eq", prim_int_eq)
             , ("prim_int_gt", prim_int_gt)
             ]
+  let opsMap = Map.fromList ops
+  forM_ exts $ \ext -> do
+    when (isNothing (Map.lookup (eName ext) opsMap)) $
+      fail $ "Missing external: " ++ show (eName ext)
   runDefinitionalT prog ops (eval (grinMain prog))
   where
+    exts = externals prog
     prim_int_add    [(DVal (SInt64 a)),(DVal (SInt64 b))] = pure (DVal (SInt64 (a + b)))
     prim_int_sub    [(DVal (SInt64 a)),(DVal (SInt64 b))] = pure (DVal (SInt64 (a - b)))
     prim_int_mul    [(DVal (SInt64 a)),(DVal (SInt64 b))] = pure (DVal (SInt64 (a * b)))
     prim_int_eq     [(DVal (SInt64 a)),(DVal (SInt64 b))] = pure (DVal (SBool (a == b)))
     prim_int_gt     [(DVal (SInt64 a)),(DVal (SInt64 b))] = pure (DVal (SBool (a > b)))
     prim_int_print  [(DVal (SInt64 i))] = liftIO $ print i >> pure DUnit
-
 
 -- * Test runs
 
