@@ -13,7 +13,7 @@ import Debug.Trace (traceShowId)
 
 
 newtype Env v = Env (Map.Map Name v)
-  deriving (Show)
+  deriving (Eq, Show, Ord)
 
 emptyEnv :: Env v
 emptyEnv = Env mempty
@@ -25,7 +25,7 @@ extendEnv :: Env v -> [(Name, v)] -> Env v
 extendEnv (Env m) vs = Env $ foldl' (\n (k,v) -> Map.insert k v n) m vs
 
 newtype Store a v = Store (Map.Map a v)
-  deriving (Show)
+  deriving (Eq, Ord, Show)
 
 emptyStore :: (Ord a) => Store a v
 emptyStore = Store mempty
@@ -36,9 +36,16 @@ storeFind (Store m) a = fromMaybe (error "Store; missing") $ Map.lookup a m
 storeExt :: (Ord a) => a -> v -> Store a v -> Store a v
 storeExt a v (Store m) = Store (Map.insert a v m)
 
+instance (Ord a, Semigroup v) => Semigroup (Store a v) where
+  (Store ma) <> (Store mb) = Store (Map.unionWith (<>) ma mb)
+
+instance (Ord a, Monoid v) => Monoid (Store a v) where
+  mempty = Store mempty
+
 class (Monad m, MonadFail m) => Interpreter m where
   type Val     m :: *
   type HeapVal m :: *
+  type StoreVal m :: *
   type Addr    m :: *
 
   -- Conversions, but m type is needed for type inference
@@ -51,7 +58,10 @@ class (Monad m, MonadFail m) => Interpreter m where
   bindPattern :: Val m -> (Tag, [Name]) -> m [(Name, Val m)]
 
   -- Non-pure
+
+  -- | Return the computational environment
   askEnv      :: m (Env (Val m))
+  -- | Set the local environment
   localEnv    :: Env (Val m) -> m (Val m) -> m (Val m)
   lookupFun   :: Name -> m Exp
   isOperation :: Name -> m Bool
@@ -62,9 +72,10 @@ class (Monad m, MonadFail m) => Interpreter m where
   funCall     :: (Exp -> m (Val m)) -> Name -> [Val m] -> m (Val m)
 
   -- Store
-  getStore     :: m (Store (Addr m) (HeapVal m))
-  updateStore  :: (Store (Addr m) (HeapVal m) -> Store (Addr m) (HeapVal m)) -> m ()
-  nextLocStore :: Store (Addr m) (HeapVal m) -> m (Addr m)
+  getStore     :: m (Store (Addr m) (StoreVal m))
+  putStore     :: (Store (Addr m) (StoreVal m)) -> m ()
+  updateStore  :: (Store (Addr m) (StoreVal m) -> Store (Addr m) (StoreVal m)) -> m ()
+  nextLocStore :: Store (Addr m) (StoreVal m) -> m (Addr m)
   allocStore   :: m (Val m)
   findStore    :: Val m -> m (Val m)
   extStore     :: Val m -> Val m -> m ()
@@ -83,7 +94,7 @@ debug ev e = do
   ev e
 
 -- Open recursion and monadic interpreter.
-ev :: (Interpreter m, a ~ Addr m) => (Exp -> m (Val m)) -> Exp -> m (Val m)
+ev :: (MonadIO m, Interpreter m, a ~ Addr m, v ~ Val m, Show v) => (Exp -> m (Val m)) -> Exp -> m (Val m)
 ev ev = \case
   SPure n@(ConstTagNode{})  -> value n
   SPure l@(Lit{})           -> value l
@@ -93,6 +104,7 @@ ev ev = \case
 
   SApp fn ps -> do
     p <- askEnv
+--    liftIO $ print (fn, ps, p)
     vs <- pure $ map (lookupEnv p) ps
     op <- isOperation fn
     (if op then operation else funCall ev) fn vs
@@ -143,7 +155,7 @@ ev ev = \case
   other -> error $ show ("ev", other)
 
 eval :: (Interpreter m, MonadIO m, Show v, v ~ Val m) => Exp -> m v
-eval e = fix ev e
+eval e = fix (debug . ev) e
 
 programToDefs :: Program -> Map.Map Name Exp
 programToDefs (Program _ defs) = Map.fromList ((\d@(Def n _ _) -> (n,d)) <$> defs)

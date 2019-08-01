@@ -1,9 +1,11 @@
 {-# LANGUAGE TemplateHaskell, GeneralizedNewtypeDeriving, TypeFamilies, InstanceSigs, LambdaCase #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Grin.Interpreter.Abstract where
 
+import Data.Function (fix)
 import Prelude hiding (fail)
 import Control.Applicative (Alternative(..))
-import Control.Monad (MonadPlus(..), forM_, msum)
+import Control.Monad (MonadPlus(..), forM_, msum, filterM)
 import Data.Maybe (isNothing)
 import Grin.Exp hiding (Val)
 import qualified Grin.Exp as Grin (Val)
@@ -16,9 +18,12 @@ import Control.Monad.State (MonadState(..))
 import Control.Monad.Reader (MonadReader(..))
 import Control.Monad.Trans.State hiding (MonadState(..), get)
 import Control.Monad.Trans.Reader hiding (MonadReader(..), local, ask)
+import Control.Monad.Trans.RWS hiding (ask, local, get)
 import Control.Monad.Trans.List
 import Control.Monad.IO.Class (MonadIO(..))
+import Data.Functor.Infix ((<$$>))
 
+import qualified Data.List as List ((\\))
 import qualified Data.Map as Map
 import qualified Data.Set as Set; import Data.Set (Set)
 
@@ -38,23 +43,12 @@ data Node = Node Tag [ST]
 
 data T
   = ST ST
-  | NT (Set Node)
+  | NT Node
   | UT
-  | TV
   deriving (Eq, Ord, Show)
 
-instance Semigroup T where
-  TV <> v = v
-  v <> TV = v
-  (ST s1) <> (ST s2)
-    | s1 == s2 = ST s1
-    | otherwise = error $ "Semigroup T:" ++ show (s1, s2)
-  (NT n1) <> (NT n2) = NT (n1 <> n2)
-  t1 <> t2 = error $ "Semigroup T:" ++ show (t1, t2)
-
-instance Monoid T where
-  mempty  = TV
-  mappend = (<>)
+forMonadPlus :: (MonadPlus m) => [a] -> (a -> m b) -> m b
+forMonadPlus xs k = msum (map k xs)
 
 data H = H -- Heap
   deriving (Eq, Ord, Show)
@@ -62,7 +56,7 @@ data H = H -- Heap
 data AbsEnv
   = AbsEnv
   { _absOps :: Map.Map Name (T, [T])
-  , _absEnv :: Set Name         -- Names in scope
+  , _absEnv :: Env T            -- Names in scope
   , _absFun :: Map.Map Name Exp -- How to record the type of function parameters? As now the interpeter calls the
                                 -- function during the evaluation, and the current parameters are recorded in the
                                 -- environment? Maybe a state will be needed instead of the Reader monad?
@@ -72,16 +66,17 @@ data AbsEnv
 
 makeLenses ''AbsEnv
 
+type AbsStore = Store H (Set Node)
+
 data AbsState
   = AbsState
-  { _absStr :: Store H (Set Node)
-  , _absVar :: Map.Map Name T
+  { _absStr :: AbsStore
   } deriving (Show)
 
 makeLenses ''AbsState
 
 newtype AbstractT m a = AbstractT
-  { abstractT :: ListT (StateT AbsState (ReaderT AbsEnv m)) a
+  { abstractT :: RWST AbsEnv () AbsState (ListT (RWST Cache () Cache m)) a
   } deriving
     ( Functor
     , Applicative
@@ -94,15 +89,92 @@ newtype AbstractT m a = AbstractT
     , MonadPlus
     )
 
+data Cache = Cache (Map.Map Config (Set.Set (T, AbsStore)))
+  deriving (Eq, Show)
+
+diffCache :: Cache -> Cache -> String
+diffCache (Cache ma) (Cache mb) = case maSz == mbSz of
+  False -> "size " ++ show (maSz, mbSz)
+  True  -> case (Map.keys ma == Map.keys mb) of
+    False -> "different keys: " ++ show (length (Map.keys ma List.\\ Map.keys mb), length (Map.keys mb List.\\ Map.keys ma))
+    True  -> "different content:" ++ show (length $ Map.keys $ Map.filter id $ Map.intersectionWith (/=) ma mb)
+  where
+    maSz = Map.size ma
+    mbSz = Map.size mb
+
+data Config = Config
+  { cfgEnv    :: Env T
+  , cfgStore  :: AbsStore
+  , cfgExp    :: CExp
+  } deriving (Eq, Show, Ord)
+
+data CExp
+  = CApp     Name [Name]
+  | CStore   Name -- Variable should hold only nodes
+  | CFetch   Name -- Variable should hold only locations
+  | CUpdate  Name Name -- The variables in order should hold only location and node
+  deriving (Eq, Show, Ord)
+
+exp2CExp :: Exp -> Maybe CExp
+exp2CExp = \case
+  -- Simple Exp
+  SApp    f ps  -> Just $ CApp f ps
+  SStore  n     -> Just $ CStore n
+  SFetch  l     -> Just $ CFetch l
+  SUpdate l v   -> Just $ CUpdate l v
+  _             -> Nothing
+
+instance Semigroup Cache where
+  (Cache ma) <> (Cache mb) = Cache (Map.unionWith (Set.union) ma mb)
+
+instance Monoid Cache where
+  mempty = Cache mempty
+
+cacheSize :: Cache -> [Int]
+cacheSize (Cache m) = Map.elems $ fmap Set.size m
+
+inCache :: Config -> Cache -> Bool
+inCache c (Cache m) = Map.member c m
+
+getCache :: Config -> Cache -> [(T, AbsStore)]
+getCache c (Cache m) = maybe [] Set.toList $ Map.lookup c m
+
+insertCache :: Config -> [(T, AbsStore)] -> Cache -> Cache
+insertCache c vos (Cache m) = Cache (Map.unionWith (<>) m (Map.singleton c (Set.fromList vos)))
+
+getCacheOut :: (Applicative m) => AbstractT m Cache
+getCacheOut = AbstractT $ RWST $ \_ae as -> ListT $ RWST $ \_inC outC ->
+  pure ([(outC,as,())], outC, ())
+
+putCacheOut :: (Applicative m) => Cache -> AbstractT m ()
+putCacheOut outC = AbstractT $ RWST $ \_ae as -> ListT $ RWST $ \_inC _outC ->
+  pure ([((), as, ())], outC, ())
+
+updateCacheOut :: (Applicative m) => (Cache -> Cache) -> AbstractT m ()
+updateCacheOut f = AbstractT $ RWST $ \_ae as -> ListT $ RWST $ \_inC outC ->
+  pure ([((),as,())], f outC, ())
+
+askCacheIn :: (Applicative m) => AbstractT m Cache
+askCacheIn = AbstractT $ RWST $ \_ae as -> ListT $ RWST $ \inC outC ->
+  pure ([(inC,as,())], outC, ())
+
+localCacheIn :: Cache -> AbstractT m a -> AbstractT m a
+localCacheIn inC m = AbstractT $ RWST $ \ae as -> ListT $ RWST $ \_inC outC ->
+  runRWST (runListT (runRWST (abstractT m) ae as)) inC outC
+
 runAbstractT
   :: (Monad m, MonadFail m, MonadIO m)
   => Program -> [(Name, (T, [T]))]
-  -> AbstractT m a -> m ([a], AbsState)
+  -> AbstractT m a -> m ([(a, AbsState, ())], Cache, ())
 runAbstractT prog ops m =
-  flip runReaderT (AbsEnv (Map.fromList ops) mempty (programToDefs prog)) $
-  flip runStateT (AbsState emptyStore mempty) $
-  runListT $
-  abstractT $ m
+  runRWST
+    (runListT
+      (runRWST
+        (abstractT m)
+        (AbsEnv (Map.fromList ops) emptyEnv (programToDefs prog))
+        (AbsState emptyStore)))
+    mempty
+    mempty
 
 typeOfLit :: Lit -> T
 typeOfLit = \case
@@ -113,9 +185,10 @@ typeOfLit = \case
   LString _ -> ST SString
   LChar   _ -> ST SChar
 
-instance (Monad m, MonadFail m) => Interpreter (AbstractT m) where
+instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
   type Val     (AbstractT m) = T
-  type HeapVal (AbstractT m) = Set Node
+  type HeapVal (AbstractT m) = Node
+  type StoreVal (AbstractT m) = Set Node
   type Addr    (AbstractT m) = H
 
   value :: Grin.Val -> AbstractT m T
@@ -123,7 +196,7 @@ instance (Monad m, MonadFail m) => Interpreter (AbstractT m) where
     (ConstTagNode tag ps) -> do
       p  <- askEnv
       ts <- pure $ map (lookupEnv p) ps
-      pure $ NT $ Set.singleton $ Node tag $ map (\case
+      pure $ NT $ Node tag $ map (\case
         ST t -> t
         other -> error $ show ("value", other) -- TODO: Include type error
         ) ts
@@ -132,19 +205,18 @@ instance (Monad m, MonadFail m) => Interpreter (AbstractT m) where
 
   val2addr :: T -> AbstractT m H
   val2addr = \case
-    TV      -> pure H
     ST SLoc -> pure H
     other   -> error $ show ("val2addr", other)
 
   addr2val :: H -> AbstractT m T
   addr2val _ = pure $ ST SLoc
 
-  val2heapVal :: T -> AbstractT m (Set Node)
+  val2heapVal :: T -> AbstractT m Node
   val2heapVal = \case
     NT n -> pure n
     other -> error $ show ("val2heapVal", other)
 
-  heapVal2val :: (Set Node) -> AbstractT m T
+  heapVal2val :: Node -> AbstractT m T
   heapVal2val = pure . NT
 
   unit :: AbstractT m T
@@ -152,21 +224,17 @@ instance (Monad m, MonadFail m) => Interpreter (AbstractT m) where
 
   bindPattern :: T -> (Tag, [Name]) -> AbstractT m [(Name, T)]
   bindPattern t (tag,ps) = case t of
-    NT nodes -> do
-      [Node t1 ps1] <- pure $ Set.toList $ Set.filter (\(Node t0 ps0) -> t0 == tag) nodes
-      pure $ ps `zip` (ST <$> ps1)
+    NT (Node t1 ps1)
+      | t1 == tag -> pure (ps `zip` (ST <$> ps1))
+      | otherwise -> mzero
     other -> error $ show ("bindPattern", other)
 
   -- non-pure
   askEnv :: AbstractT m (Env T)
-  askEnv = do
-    ns <- _absEnv <$> ask
-    (Env . flip Map.restrictKeys ns . _absVar) <$> get
+  askEnv = _absEnv <$> ask
 
   localEnv :: Env T -> AbstractT m T -> AbstractT m T
-  localEnv (Env ns) m = do
-    absVar %= (Map.unionWith (<>) ns)
-    local (absEnv .~ (Map.keysSet ns)) m
+  localEnv env = local (absEnv .~ env)
 
   lookupFun :: Name -> AbstractT m Exp
   lookupFun fn = (fromMaybe (error $ show ("lookupFun", fn)) . Map.lookup fn . _absFun) <$> ask
@@ -177,19 +245,27 @@ instance (Monad m, MonadFail m) => Interpreter (AbstractT m) where
   operation :: Name -> [T] -> AbstractT m T
   operation n ps = do
     (r,ts) <- (fromJust . Map.lookup n . _absOps) <$> ask
-    when (ps /= ts) $ error $ show ("operation", ps, ts)
+    when (ps /= ts) $ error $ show ("operation", n, ps, ts)
     pure r
 
   evalCase :: (Exp -> AbstractT m T) -> T -> [Alt] -> AbstractT m T
-  evalCase ev _v alts = do
-    msum $ map extendAlt alts
+  evalCase ev v alts = do
+    selectedAlts <- filterM isMatching alts
+    forMonadPlus selectedAlts extendAlt
     where
+      isMatching (Alt DefaultPat     _) = pure True
+      isMatching (Alt (LitPat l)     _) = (v ==) <$> value (Lit l)
+      isMatching (Alt (NodePat t ps) _) = case v of
+        NT (Node t0 _) -> pure $ t == t0
+        other          -> pure False
+
       extendAlt (Alt DefaultPat     body) = ev body
       extendAlt (Alt (LitPat _)     body) = ev body
-      extendAlt (Alt (NodePat _ ns) body) = do
-        p <- askEnv
-        let p' = extendEnv p (map (flip (,) TV) ns)
-        localEnv p' $ ev body
+      extendAlt (Alt (NodePat _ ns) body) = case v of
+        NT (Node t0 vs) -> do
+          p <- askEnv
+          localEnv (extendEnv p (ns `zip` (ST <$> vs))) $ ev body
+        other -> error $ show ("extendAlt", other)
 
   funCall :: (Exp -> AbstractT m T) -> Name -> [T] -> AbstractT m T
   funCall ev fn vs = do
@@ -197,13 +273,16 @@ instance (Monad m, MonadFail m) => Interpreter (AbstractT m) where
     let p' = extendEnv emptyEnv (fps `zip` vs)
     localEnv p' (ev body)
 
-  getStore :: AbstractT m (Store H (Set Node))
+  getStore :: AbstractT m AbsStore
   getStore = _absStr <$> Control.Monad.State.get
 
-  updateStore :: (Store H (Set Node) -> Store H (Set Node)) -> AbstractT m ()
+  putStore :: AbsStore -> AbstractT m ()
+  putStore = (absStr .=)
+
+  updateStore :: (AbsStore -> AbsStore) -> AbstractT m ()
   updateStore = (absStr %=)
 
-  nextLocStore :: Store H (Set Node) -> AbstractT m H
+  nextLocStore :: AbsStore -> AbstractT m H
   nextLocStore _ = pure H
 
   allocStore :: AbstractT m T
@@ -213,16 +292,63 @@ instance (Monad m, MonadFail m) => Interpreter (AbstractT m) where
   findStore v = do
     s <- getStore
     a <- val2addr v
-    heapVal2val $ storeFind s a
+    forMonadPlus (Set.toList $ storeFind s a) heapVal2val
 
   extStore :: T -> T -> AbstractT m ()
   extStore v0 v1 = do
     a <- val2addr v0
     n <- val2heapVal v1
-    let changeElem x = (fmap (Set.union n) x) `mplus` (Just n)
+    let changeElem x = (fmap (Set.insert n) x) `mplus` (Just (Set.singleton n))
     updateStore (\(Store m) -> Store (Map.alter changeElem a m))
 
-evalAbstractOne :: (Monad m, MonadFail m, MonadIO m) => Program -> m AbsState
+evalCache
+  :: (Monad m, MonadFail m, MonadIO m)
+  => ((Exp -> AbstractT m T) -> (Exp -> AbstractT m T)) -> (Exp -> AbstractT m T) -> Exp -> AbstractT m T
+evalCache ev0 ev e = do
+  p   <- askEnv
+  o   <- getStore
+  case (exp2CExp e) of
+    n@Nothing -> do
+      ev0 ev e
+    Just ce -> do
+      let c = Config { cfgEnv = p, cfgStore = o, cfgExp = ce }
+      outc <- getCacheOut
+      if inCache c outc
+        then do
+          forMonadPlus (getCache c outc) $ \(v,o) -> do
+            putStore o
+            pure v
+        else do
+          inc <- askCacheIn
+          let vo0 = if inCache c inc then (getCache c inc) else []
+          putCacheOut (insertCache c vo0 outc)
+          v <- ev0 ev e
+          o' <- getStore
+          updateCacheOut (insertCache c [(v,o')])
+          pure v
+
+
+mlfp :: (MonadIO m, Monad m) => (Cache -> AbstractT m Cache) -> AbstractT m Cache
+mlfp f = loop mempty where
+  loop x = do
+    x' <- f x
+    if (x' == x)
+      then pure x
+      else loop x'
+
+fixCache :: (MonadFail m, MonadIO m) => (t -> AbstractT m a) -> t -> AbstractT m ()
+fixCache eval e = do
+  p <- askEnv
+  o <- getStore
+  dp <- mlfp $ \cin -> do
+          putCacheOut mempty
+          putStore o
+          localCacheIn cin $ eval e
+          r <- getCacheOut
+          pure r
+  pure ()
+
+evalAbstractOne :: (Monad m, MonadFail m, MonadIO m) => Program -> m Cache
 evalAbstractOne prog = do
   let ops = [ ("prim_int_add", prim_int_add)
             , ("prim_int_sub", prim_int_sub)
@@ -235,8 +361,7 @@ evalAbstractOne prog = do
   forM_ exts $ \ext -> do
     when (isNothing (Map.lookup (eName ext) opsMap)) $
       fail $ "Missing external: " ++ show (eName ext)
-  -- runDefinitionalT prog ops (eval (grinMain prog))
-  snd <$> runAbstractT prog ops (eval (grinMain prog))
+  (\(_,c,_) -> c) <$> runAbstractT prog ops (fixCache (fix (evalCache ev)) (grinMain prog))
   where
     exts = externals prog
     prim_int_add    = (ST SInt64, [ST SInt64, ST SInt64])
@@ -244,7 +369,7 @@ evalAbstractOne prog = do
     prim_int_mul    = (ST SInt64, [ST SInt64, ST SInt64])
     prim_int_eq     = (ST SBool,  [ST SInt64, ST SInt64])
     prim_int_gt     = (ST SBool,  [ST SInt64, ST SInt64])
-    prim_int_print  = (UT, [ST SInt64, ST SInt64])
+    prim_int_print  = (UT, [ST SInt64])
 
 
 runAdd :: IO ()

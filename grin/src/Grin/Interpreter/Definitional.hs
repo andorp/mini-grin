@@ -76,9 +76,10 @@ runDefinitionalT prog ops n = runReaderT (evalStateT (definitionalT n) emptyStor
         emptyEnv
 
 instance (Applicative m, Monad m, MonadFail m) => Interpreter (DefinitionalT m) where
-  type Val     (DefinitionalT m) = DVal
-  type HeapVal (DefinitionalT m) = Node
-  type Addr    (DefinitionalT m) = Loc
+  type Val      (DefinitionalT m) = DVal
+  type HeapVal  (DefinitionalT m) = Node
+  type StoreVal (DefinitionalT m) = Node
+  type Addr     (DefinitionalT m) = Loc
 
   value :: Grin.Val -> DefinitionalT m DVal
   value = \case
@@ -160,6 +161,9 @@ instance (Applicative m, Monad m, MonadFail m) => Interpreter (DefinitionalT m) 
 
   getStore :: DefinitionalT m (Store Loc Node)
   getStore = DefinitionalT get
+
+  putStore :: Store Loc Node -> DefinitionalT m ()
+  putStore s = state (\_ -> ((), s))
 
   updateStore :: (Store Loc Node -> Store Loc Node) -> DefinitionalT m ()
   updateStore f = state (\s -> ((), f s))
