@@ -159,6 +159,7 @@ data Type
   | T_NodeSet     {_nodeSet     :: NodeSet}
   deriving (Generic, Data, NFData, Eq, Ord, Show)
 
+{-
 data TypeEnv
   = TypeEnv
   { _location :: Vector NodeSet
@@ -169,10 +170,11 @@ data TypeEnv
 
 emptyTypeEnv :: TypeEnv
 emptyTypeEnv = TypeEnv mempty mempty mempty
+-}
 
 -- * Template Haskell
 
-makeLenses ''TypeEnv
+-- makeLenses ''TypeEnv
 makeLenses ''Type
 makeLenses ''SimpleType
 

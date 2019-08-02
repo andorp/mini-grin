@@ -11,6 +11,7 @@ import Control.Monad.Trans.Reader hiding (ask, local)
 import Control.Monad.Trans.State hiding (state, get)
 import Data.Maybe (fromJust, mapMaybe, fromMaybe, isNothing)
 import Grin.Exp hiding (Loc, Val)
+import Grin.Examples
 import qualified Grin.Exp as Grin (Val)
 import Grin.Interpreter.Base
 import Lens.Micro.Platform

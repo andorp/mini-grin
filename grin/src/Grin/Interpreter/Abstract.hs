@@ -1,5 +1,5 @@
 {-# LANGUAGE TemplateHaskell, GeneralizedNewtypeDeriving, TypeFamilies, InstanceSigs, LambdaCase #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE MultiParamTypeClasses, RankNTypes, ScopedTypeVariables, RecordWildCards #-}
 module Grin.Interpreter.Abstract where
 
 import Data.Function (fix)
@@ -8,6 +8,8 @@ import Control.Applicative (Alternative(..))
 import Control.Monad (MonadPlus(..), forM_, msum, filterM)
 import Data.Maybe (isNothing)
 import Grin.Exp hiding (Val)
+import Grin.Pretty
+import Grin.Examples
 import qualified Grin.Exp as Grin (Val)
 import Grin.Interpreter.Base
 import Data.Maybe (fromMaybe, fromJust)
@@ -19,9 +21,12 @@ import Control.Monad.Reader (MonadReader(..))
 import Control.Monad.Trans.State hiding (MonadState(..), get)
 import Control.Monad.Trans.Reader hiding (MonadReader(..), local, ask)
 import Control.Monad.Trans.RWS hiding (ask, local, get)
-import Control.Monad.Trans.List
+-- import Control.Monad.Trans.List
 import Control.Monad.IO.Class (MonadIO(..))
 import Data.Functor.Infix ((<$$>))
+import Control.Monad.Logic hiding (fail)
+import Text.PrettyPrint.ANSI.Leijen hiding (SChar, (<$>), (<$$>))
+import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 import qualified Data.List as List ((\\))
 import qualified Data.Map as Map
@@ -38,6 +43,11 @@ data ST
   | SLoc
   deriving (Eq, Ord, Show)
 
+instance Pretty ST where
+  pretty = \case
+    SLoc -> {-encloseSep lbrace rbrace comma $ map (cyan . int)-} cyan $ text $ show SLoc
+    ty -> red $ text $ show ty
+
 data Node = Node Tag [ST]
   deriving (Eq, Ord, Show)
 
@@ -47,11 +57,22 @@ data T
   | UT
   deriving (Eq, Ord, Show)
 
+instance Pretty Node where
+  pretty (Node tag args) = pretty tag <> list (map pretty args)
+
+instance Pretty T where
+  pretty = \case
+    ST ty -> pretty ty
+    NT n  -> pretty n
+
 forMonadPlus :: (MonadPlus m) => [a] -> (a -> m b) -> m b
 forMonadPlus xs k = msum (map k xs)
 
 data H = H -- Heap
   deriving (Eq, Ord, Show)
+
+instance Pretty H where
+  pretty = text . show
 
 data AbsEnv
   = AbsEnv
@@ -66,6 +87,15 @@ data AbsEnv
 
 makeLenses ''AbsEnv
 
+data TypeEnv = TypeEnv
+  { _location :: AbsStore
+  }
+
+instance Pretty TypeEnv where
+  pretty TypeEnv{..} = vsep
+    [ yellow (text "Location") PP.<$$> indent 4 (pretty _location)
+    ]
+
 type AbsStore = Store H (Set Node)
 
 data AbsState
@@ -76,12 +106,11 @@ data AbsState
 makeLenses ''AbsState
 
 newtype AbstractT m a = AbstractT
-  { abstractT :: RWST AbsEnv () AbsState (ListT (RWST Cache () Cache m)) a
+  { abstractT :: RWST AbsEnv () AbsState (LogicT (RWST Cache () Cache m)) a
   } deriving
     ( Functor
     , Applicative
     , Monad
-    , MonadFail
     , MonadIO
     , MonadState AbsState
     , MonadReader AbsEnv
@@ -89,18 +118,52 @@ newtype AbstractT m a = AbstractT
     , MonadPlus
     )
 
+instance MonadFail (AbstractT m) where
+  fail _ = mzero
+
+runAbstractT
+  :: (Monad m, MonadFail m, MonadIO m)
+  => Program -> [(Name, (T, [T]))]
+  -> AbstractT m a -> m ((a, AbsState, ()), Cache, ())
+runAbstractT prog ops m =
+  runRWST
+    (observeT
+      (runRWST
+        (abstractT m)
+        (AbsEnv (Map.fromList ops) emptyEnv (programToDefs prog))
+        (AbsState emptyStore)))
+    mempty
+    mempty
+
+getCacheOut :: (Monad m) => AbstractT m Cache
+getCacheOut = AbstractT $ RWST $ \_ae as -> LogicT $ \sk fk -> do
+  outC <- get
+  sk (outC,as,()) fk
+
+putCacheOut :: (Monad m) => Cache -> AbstractT m ()
+putCacheOut outC = AbstractT $ RWST $ \_ae as -> LogicT $ \sk fk -> do
+  Control.Monad.State.put outC
+  sk ((),as,()) fk
+
+updateCacheOut :: (Monad m) => (Cache -> Cache) -> AbstractT m ()
+updateCacheOut f = AbstractT $ RWST $ \_ae as -> LogicT $ \sk fk -> do
+  Control.Monad.State.state (\s -> ((), f s))
+  sk ((),as,()) fk
+
+askCacheIn :: (Monad m) => AbstractT m Cache
+askCacheIn = AbstractT $ RWST $ \_ae as -> LogicT $ \sk fk -> do
+  inC <- ask
+  sk (inC,as,()) fk
+
+localCacheIn :: (Monad m) => Cache -> AbstractT m a -> AbstractT m a
+localCacheIn inC m = AbstractT $ RWST $ \ae as -> LogicT $ \sk fk -> do
+  local (const inC) $ unLogicT (runRWST (abstractT m) ae as) sk fk
+
 data Cache = Cache (Map.Map Config (Set.Set (T, AbsStore)))
   deriving (Eq, Show)
 
-diffCache :: Cache -> Cache -> String
-diffCache (Cache ma) (Cache mb) = case maSz == mbSz of
-  False -> "size " ++ show (maSz, mbSz)
-  True  -> case (Map.keys ma == Map.keys mb) of
-    False -> "different keys: " ++ show (length (Map.keys ma List.\\ Map.keys mb), length (Map.keys mb List.\\ Map.keys ma))
-    True  -> "different content:" ++ show (length $ Map.keys $ Map.filter id $ Map.intersectionWith (/=) ma mb)
-  where
-    maSz = Map.size ma
-    mbSz = Map.size mb
+cache2TypeEnv :: Cache -> TypeEnv
+cache2TypeEnv (Cache m) = TypeEnv $ mconcat $ Set.toList $ Set.map snd $ Set.unions $ Map.elems m
 
 data Config = Config
   { cfgEnv    :: Env T
@@ -141,40 +204,6 @@ getCache c (Cache m) = maybe [] Set.toList $ Map.lookup c m
 
 insertCache :: Config -> [(T, AbsStore)] -> Cache -> Cache
 insertCache c vos (Cache m) = Cache (Map.unionWith (<>) m (Map.singleton c (Set.fromList vos)))
-
-getCacheOut :: (Applicative m) => AbstractT m Cache
-getCacheOut = AbstractT $ RWST $ \_ae as -> ListT $ RWST $ \_inC outC ->
-  pure ([(outC,as,())], outC, ())
-
-putCacheOut :: (Applicative m) => Cache -> AbstractT m ()
-putCacheOut outC = AbstractT $ RWST $ \_ae as -> ListT $ RWST $ \_inC _outC ->
-  pure ([((), as, ())], outC, ())
-
-updateCacheOut :: (Applicative m) => (Cache -> Cache) -> AbstractT m ()
-updateCacheOut f = AbstractT $ RWST $ \_ae as -> ListT $ RWST $ \_inC outC ->
-  pure ([((),as,())], f outC, ())
-
-askCacheIn :: (Applicative m) => AbstractT m Cache
-askCacheIn = AbstractT $ RWST $ \_ae as -> ListT $ RWST $ \inC outC ->
-  pure ([(inC,as,())], outC, ())
-
-localCacheIn :: Cache -> AbstractT m a -> AbstractT m a
-localCacheIn inC m = AbstractT $ RWST $ \ae as -> ListT $ RWST $ \_inC outC ->
-  runRWST (runListT (runRWST (abstractT m) ae as)) inC outC
-
-runAbstractT
-  :: (Monad m, MonadFail m, MonadIO m)
-  => Program -> [(Name, (T, [T]))]
-  -> AbstractT m a -> m ([(a, AbsState, ())], Cache, ())
-runAbstractT prog ops m =
-  runRWST
-    (runListT
-      (runRWST
-        (abstractT m)
-        (AbsEnv (Map.fromList ops) emptyEnv (programToDefs prog))
-        (AbsState emptyStore)))
-    mempty
-    mempty
 
 typeOfLit :: Lit -> T
 typeOfLit = \case
@@ -374,13 +403,17 @@ evalAbstractOne prog = do
 
 runAdd :: IO ()
 runAdd = do
-  print =<< evalAbstractOne add
+  cache <- evalAbstractOne add
+  print $ PP $ cache2TypeEnv cache
 
 runFact :: IO ()
 runFact = do
-  print =<< evalAbstractOne fact
+  cache <- evalAbstractOne fact
+  print $ PP $ cache2TypeEnv cache
 
 runSum :: IO ()
 runSum = do
-  print =<< evalAbstractOne sumSimple
+  cache <- evalAbstractOne sumSimple
+  print cache
+  print $ PP $ cache2TypeEnv cache
 
