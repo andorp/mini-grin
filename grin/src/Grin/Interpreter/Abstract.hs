@@ -27,6 +27,7 @@ import Data.Functor.Infix ((<$$>))
 import Control.Monad.Logic hiding (fail)
 import Text.PrettyPrint.ANSI.Leijen hiding (SChar, (<$>), (<$$>))
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
+import qualified Text.PrettyPrint.ANSI.Leijen.Internal as PP
 
 import qualified Data.List as List ((\\))
 import qualified Data.Map as Map
@@ -64,6 +65,7 @@ instance Pretty T where
   pretty = \case
     ST ty -> pretty ty
     NT n  -> pretty n
+    UT    -> text "Unit"
 
 forMonadPlus :: (MonadPlus m) => [a] -> (a -> m b) -> m b
 forMonadPlus xs k = msum (map k xs)
@@ -87,13 +89,34 @@ data AbsEnv
 
 makeLenses ''AbsEnv
 
+newtype FunctionT = FunctionT (Set T, [Set T])
+
+instance Semigroup FunctionT where
+  (FunctionT (r1,ps1)) <> (FunctionT (r2,ps2)) = FunctionT ((r1 <> r2),(zipWith (<>) ps1 ps2)) -- TODO: Check
+
+instance Monoid FunctionT where
+  mempty = FunctionT mempty
+
+prettyFunctionT :: (Name, FunctionT) -> Doc
+prettyFunctionT (name, (FunctionT (ret, args))) = pretty name <> align (encloseSep (text " :: ") PP.empty (text " -> ") (map pretty $ args ++ [ret]))
+
 data TypeEnv = TypeEnv
   { _location :: AbsStore
+  , _variable :: Env (Set T)
+  , _function :: Map.Map Name FunctionT
   }
+
+instance Semigroup TypeEnv where
+  TypeEnv l1 v1 f1 <> TypeEnv l2 v2 f2 = TypeEnv (l1 <> l2) (v1 <> v2) (Map.unionWith (<>) f1 f2)
+
+instance Monoid TypeEnv where
+  mempty = TypeEnv mempty mempty mempty
 
 instance Pretty TypeEnv where
   pretty TypeEnv{..} = vsep
     [ yellow (text "Location") PP.<$$> indent 4 (pretty _location)
+    , yellow (text "Variable") PP.<$$> indent 4 (pretty _variable)
+    , yellow (text "Function") PP.<$$> indent 4 (vsep $ map prettyFunctionT $ Map.toList _function)
     ]
 
 type AbsStore = Store H (Set Node)
@@ -106,7 +129,7 @@ data AbsState
 makeLenses ''AbsState
 
 newtype AbstractT m a = AbstractT
-  { abstractT :: RWST AbsEnv () AbsState (LogicT (RWST Cache () Cache m)) a
+  { abstractT :: RWST AbsEnv () AbsState (LogicT (RWST (TypeEnv,Cache) () (TypeEnv, Cache) m)) a
   } deriving
     ( Functor
     , Applicative
@@ -124,7 +147,7 @@ instance MonadFail (AbstractT m) where
 runAbstractT
   :: (Monad m, MonadFail m, MonadIO m)
   => Program -> [(Name, (T, [T]))]
-  -> AbstractT m a -> m ((a, AbsState, ()), Cache, ())
+  -> AbstractT m a -> m ((a, AbsState, ()), (TypeEnv,Cache), ())
 runAbstractT prog ops m =
   runRWST
     (observeT
@@ -137,33 +160,50 @@ runAbstractT prog ops m =
 
 getCacheOut :: (Monad m) => AbstractT m Cache
 getCacheOut = AbstractT $ RWST $ \_ae as -> LogicT $ \sk fk -> do
-  outC <- get
+  (_, outC) <- get
   sk (outC,as,()) fk
 
 putCacheOut :: (Monad m) => Cache -> AbstractT m ()
 putCacheOut outC = AbstractT $ RWST $ \_ae as -> LogicT $ \sk fk -> do
-  Control.Monad.State.put outC
+  (te, _) <- get
+  Control.Monad.State.put (te <> cache2TypeEnv outC, outC)
   sk ((),as,()) fk
 
 updateCacheOut :: (Monad m) => (Cache -> Cache) -> AbstractT m ()
 updateCacheOut f = AbstractT $ RWST $ \_ae as -> LogicT $ \sk fk -> do
-  Control.Monad.State.state (\s -> ((), f s))
+  Control.Monad.State.state (\(te,c) -> ((), (te <> cache2TypeEnv (f c), f c)))
+  sk ((),as,()) fk
+
+appendEnvOut :: (Monad m) => Env T -> AbstractT m ()
+appendEnvOut env = AbstractT $ RWST $ \_ae as -> LogicT $ \sk fk -> do
+  (te, outC) <- get
+  Control.Monad.State.put (te <> mempty { _variable = (Set.singleton <$> env) }, outC)
+  sk ((),as,()) fk
+
+appendFunOut :: (Monad m) => (Name,[T],T) -> AbstractT m ()
+appendFunOut (fn,ps,r) = AbstractT $ RWST $ \_ae as -> LogicT $ \sk fk -> do
+  (te, outC) <- get
+  Control.Monad.State.put
+    (te <> mempty
+      { _function = Map.singleton fn (FunctionT (Set.singleton r,Set.singleton <$> ps))
+      }
+    , outC)
   sk ((),as,()) fk
 
 askCacheIn :: (Monad m) => AbstractT m Cache
 askCacheIn = AbstractT $ RWST $ \_ae as -> LogicT $ \sk fk -> do
-  inC <- ask
+  (_, inC) <- ask
   sk (inC,as,()) fk
 
 localCacheIn :: (Monad m) => Cache -> AbstractT m a -> AbstractT m a
 localCacheIn inC m = AbstractT $ RWST $ \ae as -> LogicT $ \sk fk -> do
-  local (const inC) $ unLogicT (runRWST (abstractT m) ae as) sk fk
+  local (\(te, _) -> (te <> cache2TypeEnv inC, inC)) $ unLogicT (runRWST (abstractT m) ae as) sk fk
 
 data Cache = Cache (Map.Map Config (Set.Set (T, AbsStore)))
   deriving (Eq, Show)
 
 cache2TypeEnv :: Cache -> TypeEnv
-cache2TypeEnv (Cache m) = TypeEnv $ mconcat $ Set.toList $ Set.map snd $ Set.unions $ Map.elems m
+cache2TypeEnv (Cache m) = mempty { _location = (mconcat $ Set.toList $ Set.map snd $ Set.unions $ Map.elems m) }
 
 data Config = Config
   { cfgEnv    :: Env T
@@ -263,7 +303,9 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
   askEnv = _absEnv <$> ask
 
   localEnv :: Env T -> AbstractT m T -> AbstractT m T
-  localEnv env = local (absEnv .~ env)
+  localEnv env m = do
+    appendEnvOut env
+    local (absEnv .~ env) m
 
   lookupFun :: Name -> AbstractT m Exp
   lookupFun fn = (fromMaybe (error $ show ("lookupFun", fn)) . Map.lookup fn . _absFun) <$> ask
@@ -275,6 +317,7 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
   operation n ps = do
     (r,ts) <- (fromJust . Map.lookup n . _absOps) <$> ask
     when (ps /= ts) $ error $ show ("operation", n, ps, ts)
+    appendFunOut (n,ts,r)
     pure r
 
   evalCase :: (Exp -> AbstractT m T) -> T -> [Alt] -> AbstractT m T
@@ -300,7 +343,9 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
   funCall ev fn vs = do
     (Def _ fps body) <- lookupFun fn
     let p' = extendEnv emptyEnv (fps `zip` vs)
-    localEnv p' (ev body)
+    v <- localEnv p' (ev body)
+    appendFunOut (fn,vs,v)
+    pure v
 
   getStore :: AbstractT m AbsStore
   getStore = _absStr <$> Control.Monad.State.get
@@ -377,7 +422,7 @@ fixCache eval e = do
           pure r
   pure ()
 
-evalAbstractOne :: (Monad m, MonadFail m, MonadIO m) => Program -> m Cache
+evalAbstractOne :: (Monad m, MonadFail m, MonadIO m) => Program -> m (TypeEnv, Cache)
 evalAbstractOne prog = do
   let ops = [ ("prim_int_add", prim_int_add)
             , ("prim_int_sub", prim_int_sub)
@@ -390,7 +435,7 @@ evalAbstractOne prog = do
   forM_ exts $ \ext -> do
     when (isNothing (Map.lookup (eName ext) opsMap)) $
       fail $ "Missing external: " ++ show (eName ext)
-  (\(_,c,_) -> c) <$> runAbstractT prog ops (fixCache (fix (evalCache ev)) (grinMain prog))
+  (\(_,tc,_) -> tc) <$> runAbstractT prog ops (fixCache (fix (evalCache ev)) (grinMain prog))
   where
     exts = externals prog
     prim_int_add    = (ST SInt64, [ST SInt64, ST SInt64])
@@ -403,17 +448,15 @@ evalAbstractOne prog = do
 
 runAdd :: IO ()
 runAdd = do
-  cache <- evalAbstractOne add
-  print $ PP $ cache2TypeEnv cache
+  (typeEnv, cache) <- evalAbstractOne add
+  print $ PP typeEnv
 
 runFact :: IO ()
 runFact = do
-  cache <- evalAbstractOne fact
-  print $ PP $ cache2TypeEnv cache
+  (typeEnv, cache) <- evalAbstractOne fact
+  print $ PP typeEnv
 
 runSum :: IO ()
 runSum = do
-  cache <- evalAbstractOne sumSimple
-  print cache
-  print $ PP $ cache2TypeEnv cache
-
+  (typeEnv, cache) <- evalAbstractOne sumSimple
+  print $ PP typeEnv
