@@ -27,7 +27,8 @@ fact =
         EBind (SApp "prim_int_eq" ["f1", "f2"]) (Var "f3") $
         ECase "f3"
           [ Alt (LitPat (LBool True)) $
-                SPure (Lit (LInt64 1))
+                EBind (SPure (Lit (LInt64 1))) (Var "f7") $
+                SPure (Var "f7")
           , Alt (LitPat (LBool False)) $
                 EBind (SPure (Lit (LInt64 1))) (Var "f4") $
                 EBind (SApp "prim_int_sub" ["f1", "f4"]) (Var "f5") $

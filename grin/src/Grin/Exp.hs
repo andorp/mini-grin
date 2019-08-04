@@ -127,7 +127,6 @@ data Exp
   | SStore      Name -- Variable should hold only nodes
   | SFetch      Name -- Variable should hold only locations
   | SUpdate     Name Name -- The variables in order should hold only location and node
-  | SBlock      Exp
   -- Alt
   | Alt CPat Exp
   deriving (Generic, Data, NFData, Eq, Ord, Show)

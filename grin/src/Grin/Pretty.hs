@@ -99,7 +99,6 @@ prettyHighlightExternals externals exp = cata folder exp where
     SStoreF val             -> keywordR "store" <+> pretty val
     SFetchF  name           -> keywordR "fetch" <+> pretty name
     SUpdateF name val       -> keywordR "update" <+> pretty name <+> pretty val
-    SBlockF exp             -> text "do" <$$> indent 2 exp
     -- Alt
     AltF cpat exp     -> pretty cpat <+> text "->" <$$> indent 2 exp
 
