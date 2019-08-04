@@ -36,7 +36,8 @@ import Data.Functor.Foldable as Foldable
 import Text.PrettyPrint.ANSI.Leijen
 
 import Grin.Exp
-
+import Data.Function (on)
+import Data.List (sortBy)
 
 
 showWidth :: Int -> Doc -> String
@@ -153,28 +154,27 @@ instance Pretty SimpleType where
     T_Location l -> encloseSep lbrace rbrace comma $ map (cyan . int) l
     ty -> red $ text $ show ty
 
-prettyNode :: (Tag, Vector SimpleType) -> Doc
-prettyNode (tag, args) = pretty tag <> list (map pretty $ V.toList args)
+prettyNode :: (Tag, [SimpleType]) -> Doc
+prettyNode (tag, args) = pretty tag <> list (map pretty args)
 
 instance Pretty Type where
   pretty = \case
     T_SimpleType ty -> pretty ty
     T_NodeSet ns    -> encloseSep lbrace rbrace comma (map prettyNode (Map.toList ns))
 
-{-
 instance Pretty TypeEnv where
   pretty TypeEnv{..} = vsep
-    [ yellow (text "Location") <$$> indent 4 (prettyKeyValue $ zip [(0 :: Int)..] $ map T_NodeSet $ V.toList _location)
+    [ yellow (text "Location") <$$> indent 4 (prettyKeyValue $ sortBy (compare `on` fst) $ Map.toList $ Map.map T_NodeSet _location)
     , yellow (text "Variable") <$$> indent 4 (prettyKeyValue $ Map.toList _variable)
     , yellow (text "Function") <$$> indent 4 (vsep $ map prettyFunction $ Map.toList _function)
     ]
--}
+
 
 prettyExternals :: [External] -> Doc
 prettyExternals exts = vcat (map prettyExtGroup $ groupBy (\a b -> eEffectful a == eEffectful b && eKind a == eKind b) exts) where
   prettyExtGroup [] = mempty
   prettyExtGroup l@(a : _) = keyword "primop" <+> (if eEffectful a then keyword "effectful" else keyword "pure") <$$> indent 2
-    (vsep [prettyFunction (eName, (eRetType, V.fromList eArgsType)) | External{..} <- l] <> line)
+    (vsep [prettyFunction (eName, (eRetType, eArgsType)) | External{..} <- l] <> line)
 
 instance Pretty Ty where
   pretty = \case
@@ -188,8 +188,8 @@ prettyBracedList = encloseSep lbrace rbrace comma
 prettySimplePair :: (Pretty a, Pretty b) => (a, b) -> Doc
 prettySimplePair (x, y) = pretty x <> pretty y
 
-prettyFunction :: (Pretty a, Pretty name) => (name, (a, Vector a)) -> Doc
-prettyFunction (name, (ret, args)) = pretty name <> align (encloseSep (text " :: ") empty (text " -> ") (map pretty $ (V.toList args) ++ [ret]))
+prettyFunction :: (Pretty a, Pretty name) => (name, (a, [a])) -> Doc
+prettyFunction (name, (ret, args)) = pretty name <> align (encloseSep (text " :: ") empty (text " -> ") (map pretty $ args ++ [ret]))
 
 prettyLocSet :: Set Loc -> Doc
 prettyLocSet = semiBraces . map (cyan . int) . Set.toList

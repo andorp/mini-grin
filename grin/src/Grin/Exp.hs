@@ -151,25 +151,24 @@ data SimpleType
   | T_Char
   deriving (Generic, Data, NFData, Eq, Ord, Show)
 
-type NodeSet = Map Tag (Vector SimpleType)
+type NodeSet = Map Tag [SimpleType]
 
 data Type
   = T_SimpleType  {_simpleType  :: SimpleType}
   | T_NodeSet     {_nodeSet     :: NodeSet}
   deriving (Generic, Data, NFData, Eq, Ord, Show)
 
-{-
 data TypeEnv
   = TypeEnv
-  { _location :: Vector NodeSet
+  { _location :: Map Int NodeSet
   , _variable :: Map Name Type
-  , _function :: Map Name (Type, Vector Type)
+  , _function :: Map Name (Type, [Type])
   }
   deriving (Eq, Show)
 
 emptyTypeEnv :: TypeEnv
 emptyTypeEnv = TypeEnv mempty mempty mempty
--}
+
 
 -- * Template Haskell
 
