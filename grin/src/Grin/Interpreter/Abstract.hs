@@ -7,7 +7,7 @@ import Prelude hiding (fail)
 import Control.Applicative (Alternative(..))
 import Control.Monad (MonadPlus(..), forM_, msum, filterM)
 import Data.Maybe (isNothing)
-import Grin.Exp hiding (Val)
+import Grin.Exp hiding (Val, Loc)
 import Grin.Pretty
 import Grin.Examples
 import qualified Grin.Exp as Grin (Val)
@@ -40,12 +40,12 @@ data ST
   | SBool
   | SString
   | SChar
-  | SLoc
+  | SLoc Loc
   deriving (Eq, Ord, Show)
 
 instance Pretty ST where
   pretty = \case
-    SLoc -> {-encloseSep lbrace rbrace comma $ map (cyan . int)-} cyan $ text $ show SLoc
+    l@(SLoc h) -> {-encloseSep lbrace rbrace comma $ map (cyan . int)-} cyan $ pretty h
     ty -> red $ text $ show ty
 
 data Node = Node Tag [ST]
@@ -69,11 +69,11 @@ instance Pretty T where
 forMonadPlus :: (MonadPlus m) => [a] -> (a -> m b) -> m b
 forMonadPlus xs k = msum (map k xs)
 
-data H = H -- Heap
+data Loc = Loc Name -- Heap
   deriving (Eq, Ord, Show)
 
-instance Pretty H where
-  pretty = text . show
+instance Pretty Loc where
+  pretty (Loc l) = text "L" <> pretty l
 
 data AbsEnv
   = AbsEnv
@@ -118,7 +118,7 @@ instance Pretty TypeEnv where
     , yellow (text "Function") PP.<$$> indent 4 (vsep $ map prettyFunctionT $ Map.toList _function)
     ]
 
-type AbsStore = Store H (Set Node)
+type AbsStore = Store Loc (Set Node)
 
 data AbsState
   = AbsState
@@ -251,7 +251,8 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
   type Val      (AbstractT m) = T
   type HeapVal  (AbstractT m) = Node
   type StoreVal (AbstractT m) = Set Node
-  type Addr     (AbstractT m) = H
+  type Addr     (AbstractT m) = Loc
+  type StoreCtx (AbstractT m) = Name
 
   value :: Grin.Val -> AbstractT m T
   value = \case
@@ -265,13 +266,13 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
     (Lit l) -> pure $ typeOfLit l
     Unit    -> pure $ UT
 
-  val2addr :: T -> AbstractT m H
+  val2addr :: T -> AbstractT m Loc
   val2addr = \case
-    ST SLoc -> pure H
-    other   -> error $ show ("val2addr", other)
+    ST (SLoc l) -> pure l
+    other       -> error $ show ("val2addr", other)
 
-  addr2val :: H -> AbstractT m T
-  addr2val _ = pure $ ST SLoc
+  addr2val :: Loc -> AbstractT m T
+  addr2val l = pure $ ST $ SLoc l
 
   val2heapVal :: T -> AbstractT m Node
   val2heapVal = \case
@@ -280,6 +281,9 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
 
   heapVal2val :: Node -> AbstractT m T
   heapVal2val = pure . NT
+
+  name2AllocCtx :: Name -> AbstractT m Name
+  name2AllocCtx = pure
 
   unit :: AbstractT m T
   unit = pure UT
@@ -349,11 +353,14 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
   updateStore :: (AbsStore -> AbsStore) -> AbstractT m ()
   updateStore = (absStr %=)
 
-  nextLocStore :: AbsStore -> AbstractT m H
-  nextLocStore _ = pure H
+  nextLocStore :: Name -> AbsStore -> AbstractT m Loc
+  nextLocStore n _ = pure $ Loc n
 
-  allocStore :: AbstractT m T
-  allocStore = pure $ ST SLoc
+  allocStore :: Name -> AbstractT m T
+  allocStore ctx = do
+    s <- getStore
+    l <- nextLocStore ctx s
+    pure $ ST $ SLoc l
 
   findStore :: T -> AbstractT m T
   findStore v = do

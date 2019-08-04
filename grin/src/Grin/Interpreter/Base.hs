@@ -67,6 +67,7 @@ class (Monad m, MonadFail m) => Interpreter m where
   type HeapVal  m :: *
   type StoreVal m :: *
   type Addr     m :: *
+  type StoreCtx m :: *
 
   -- Conversions, but m type is needed for type inference
   value       :: Grin.Val -> m (Val m)
@@ -86,6 +87,7 @@ class (Monad m, MonadFail m) => Interpreter m where
   lookupFun   :: Name -> m Exp
   isOperation :: Name -> m Bool
   operation   :: Name -> [Val m] -> m (Val m)
+  name2AllocCtx :: Name -> m (StoreCtx m)
 
   -- Control-flow
   evalCase    :: (Exp -> m (Val m)) -> Val m -> [Alt] -> m (Val m)
@@ -95,8 +97,8 @@ class (Monad m, MonadFail m) => Interpreter m where
   getStore     :: m (Store (Addr m) (StoreVal m))
   putStore     :: (Store (Addr m) (StoreVal m)) -> m ()
   updateStore  :: (Store (Addr m) (StoreVal m) -> Store (Addr m) (StoreVal m)) -> m ()
-  nextLocStore :: Store (Addr m) (StoreVal m) -> m (Addr m)
-  allocStore   :: m (Val m)
+  nextLocStore :: StoreCtx m -> Store (Addr m) (StoreVal m) -> m (Addr m)
+  allocStore   :: StoreCtx m -> m (Val m)
   findStore    :: Val m -> m (Val m)
   extStore     :: Val m -> Val m -> m ()
 
@@ -114,7 +116,8 @@ debug ev e = do
   ev e
 
 -- Open recursion and monadic interpreter.
-ev :: (MonadIO m, Interpreter m, a ~ Addr m, v ~ Val m, Show v) => (Exp -> m (Val m)) -> Exp -> m (Val m)
+ev  :: (MonadIO m, Interpreter m, a ~ Addr m, v ~ Val m, Show v)
+    => (Exp -> m (Val m)) -> Exp -> m (Val m)
 ev ev = \case
   SPure n@(ConstTagNode{})  -> value n
   SPure l@(Lit{})           -> value l
@@ -127,13 +130,6 @@ ev ev = \case
     vs <- pure $ map (lookupEnv p) ps
     op <- isOperation fn
     (if op then operation else funCall ev) fn vs
-
-  SStore n -> do
-    p <- askEnv
-    let v = lookupEnv p n
-    a <- allocStore
-    extStore a v
-    pure a
 
   SFetch n -> do
     p <- askEnv
@@ -152,6 +148,15 @@ ev ev = \case
     v <- pure $ lookupEnv p n
     -- Select the alternative and continue the evaluation
     evalCase ev v alts
+
+  EBind (SStore n) (Var l) rhs -> do
+    p <- askEnv
+    let v = lookupEnv p n
+    ac <- name2AllocCtx l
+    a  <- allocStore ac
+    extStore a v
+    let p' = extendEnv p [(l, a)]
+    localEnv p' (ev rhs)
 
   EBind lhs (Var n) rhs -> do
     v <- ev lhs

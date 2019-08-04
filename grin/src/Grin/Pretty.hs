@@ -57,7 +57,7 @@ instance Pretty a => Show (PP a ) where
 
 -- Wide pretty printing, useful for reparsing pretty-printed ASTs
 newtype WPP a = WPP a deriving Eq
-instance Pretty a => Show (WPP a ) where
+instance Pretty a => Show (WPP a) where
   show (WPP a) = showWide . plain . pretty $ a
 
 

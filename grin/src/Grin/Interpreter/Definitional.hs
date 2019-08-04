@@ -76,11 +76,14 @@ runDefinitionalT prog ops n = runReaderT (evalStateT (definitionalT n) emptyStor
         (Map.fromList ops)
         emptyEnv
 
+data HeapCtx = HeapCtx
+
 instance (Applicative m, Monad m, MonadFail m) => Interpreter (DefinitionalT m) where
   type Val      (DefinitionalT m) = DVal
   type HeapVal  (DefinitionalT m) = Node
   type StoreVal (DefinitionalT m) = Node
   type Addr     (DefinitionalT m) = Loc
+  type StoreCtx (DefinitionalT m) = HeapCtx
 
   value :: Grin.Val -> DefinitionalT m DVal
   value = \case
@@ -109,6 +112,9 @@ instance (Applicative m, Monad m, MonadFail m) => Interpreter (DefinitionalT m) 
   val2heapVal = \case
     DNode n -> pure n
     other   -> error $ show ("val2HeapVal", other)
+
+  name2AllocCtx :: Name -> DefinitionalT m HeapCtx
+  name2AllocCtx _ = pure HeapCtx
 
   unit :: DefinitionalT m DVal
   unit = pure DUnit
@@ -169,13 +175,13 @@ instance (Applicative m, Monad m, MonadFail m) => Interpreter (DefinitionalT m) 
   updateStore :: (Store Loc Node -> Store Loc Node) -> DefinitionalT m ()
   updateStore f = state (\s -> ((), f s))
 
-  nextLocStore :: Store Loc Node -> DefinitionalT m Loc
-  nextLocStore (Store s) = pure $ Loc $ Map.size s
+  nextLocStore :: HeapCtx -> Store Loc Node -> DefinitionalT m Loc
+  nextLocStore _ (Store s) = pure $ Loc $ Map.size s
 
-  allocStore :: DefinitionalT m DVal
-  allocStore = do
+  allocStore :: HeapCtx -> DefinitionalT m DVal
+  allocStore h = do
     s <- getStore
-    a <- nextLocStore s
+    a <- nextLocStore h s
     addr2val a
 
   findStore :: DVal -> DefinitionalT m DVal
@@ -216,8 +222,7 @@ evalDefinitional prog = do
 -- * Test runs
 
 runAdd :: IO ()
-runAdd = do
-  print =<< evalDefinitional add
+runAdd = do  print =<< evalDefinitional add
 
 runFact :: IO ()
 runFact = do
