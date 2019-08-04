@@ -21,8 +21,8 @@ import Data.Set (Set)
 import Data.List (groupBy)
 import qualified Data.Set as Set
 
-import Data.Map (Map)
-import qualified Data.Map as Map
+import Data.Map.Strict (Map)
+import qualified Data.Map.Strict as Map
 
 import Data.IntMap (IntMap)
 import qualified Data.IntMap as IntMap

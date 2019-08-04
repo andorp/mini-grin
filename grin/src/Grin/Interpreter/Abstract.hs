@@ -21,7 +21,6 @@ import Control.Monad.Reader (MonadReader(..))
 import Control.Monad.Trans.State hiding (MonadState(..), get)
 import Control.Monad.Trans.Reader hiding (MonadReader(..), local, ask)
 import Control.Monad.Trans.RWS hiding (ask, local, get)
--- import Control.Monad.Trans.List
 import Control.Monad.IO.Class (MonadIO(..))
 import Data.Functor.Infix ((<$$>))
 import Control.Monad.Logic hiding (fail)
@@ -30,7 +29,7 @@ import qualified Text.PrettyPrint.ANSI.Leijen as PP
 import qualified Text.PrettyPrint.ANSI.Leijen.Internal as PP
 
 import qualified Data.List as List ((\\))
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set; import Data.Set (Set)
 
 
@@ -124,7 +123,7 @@ type AbsStore = Store H (Set Node)
 data AbsState
   = AbsState
   { _absStr :: AbsStore
-  } deriving (Show)
+  } deriving (Show, Eq)
 
 makeLenses ''AbsState
 
@@ -147,10 +146,10 @@ instance MonadFail (AbstractT m) where
 runAbstractT
   :: (Monad m, MonadFail m, MonadIO m)
   => Program -> [(Name, (T, [T]))]
-  -> AbstractT m a -> m ((a, AbsState, ()), (TypeEnv,Cache), ())
+  -> AbstractT m a -> m ([(a, AbsState, ())], (TypeEnv,Cache), ())
 runAbstractT prog ops m =
   runRWST
-    (observeT
+    (observeAllT
       (runRWST
         (abstractT m)
         (AbsEnv (Map.fromList ops) emptyEnv (programToDefs prog))
@@ -164,14 +163,14 @@ getCacheOut = AbstractT $ RWST $ \_ae as -> LogicT $ \sk fk -> do
   sk (outC,as,()) fk
 
 putCacheOut :: (Monad m) => Cache -> AbstractT m ()
-putCacheOut outC = AbstractT $ RWST $ \_ae as -> LogicT $ \sk fk -> do
-  (te, _) <- get
-  Control.Monad.State.put (te <> cache2TypeEnv outC, outC)
+putCacheOut outC1 = AbstractT $ RWST $ \_ae as -> LogicT $ \sk fk -> do
+  (te, outC0) <- get
+  Control.Monad.State.put (te <> cache2TypeEnv outC1, outC0 <> outC1)
   sk ((),as,()) fk
 
 updateCacheOut :: (Monad m) => (Cache -> Cache) -> AbstractT m ()
 updateCacheOut f = AbstractT $ RWST $ \_ae as -> LogicT $ \sk fk -> do
-  Control.Monad.State.state (\(te,c) -> ((), (te <> cache2TypeEnv (f c), f c)))
+  Control.Monad.State.state (\(te,c) -> ((), (te <> cache2TypeEnv (f c), c <> f c)))
   sk ((),as,()) fk
 
 appendEnvOut :: (Monad m) => Env T -> AbstractT m ()
@@ -213,18 +212,12 @@ data Config = Config
 
 data CExp
   = CApp     Name [Name]
-  | CStore   Name -- Variable should hold only nodes
-  | CFetch   Name -- Variable should hold only locations
-  | CUpdate  Name Name -- The variables in order should hold only location and node
   deriving (Eq, Show, Ord)
 
 exp2CExp :: Exp -> Maybe CExp
 exp2CExp = \case
   -- Simple Exp
   SApp    f ps  -> Just $ CApp f ps
-  SStore  n     -> Just $ CStore n
-  SFetch  l     -> Just $ CFetch l
-  SUpdate l v   -> Just $ CUpdate l v
   _             -> Nothing
 
 instance Semigroup Cache where
@@ -255,10 +248,10 @@ typeOfLit = \case
   LChar   _ -> ST SChar
 
 instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
-  type Val     (AbstractT m) = T
-  type HeapVal (AbstractT m) = Node
+  type Val      (AbstractT m) = T
+  type HeapVal  (AbstractT m) = Node
   type StoreVal (AbstractT m) = Set Node
-  type Addr    (AbstractT m) = H
+  type Addr     (AbstractT m) = H
 
   value :: Grin.Val -> AbstractT m T
   value = \case
@@ -331,12 +324,12 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
         NT (Node t0 _) -> pure $ t == t0
         other          -> pure False
 
-      extendAlt (Alt DefaultPat     body) = ev body
-      extendAlt (Alt (LitPat _)     body) = ev body
-      extendAlt (Alt (NodePat _ ns) body) = case v of
+      extendAlt alt@(Alt DefaultPat     body) = ev alt
+      extendAlt alt@(Alt (LitPat _)     body) = ev alt
+      extendAlt alt@(Alt (NodePat _ ns) body) = case v of
         NT (Node t0 vs) -> do
           p <- askEnv
-          localEnv (extendEnv p (ns `zip` (ST <$> vs))) $ ev body
+          localEnv (extendEnv p (ns `zip` (ST <$> vs))) $ ev alt
         other -> error $ show ("extendAlt", other)
 
   funCall :: (Exp -> AbstractT m T) -> Name -> [T] -> AbstractT m T
@@ -444,7 +437,6 @@ evalAbstractOne prog = do
     prim_int_eq     = (ST SBool,  [ST SInt64, ST SInt64])
     prim_int_gt     = (ST SBool,  [ST SInt64, ST SInt64])
     prim_int_print  = (UT, [ST SInt64])
-
 
 runAdd :: IO ()
 runAdd = do

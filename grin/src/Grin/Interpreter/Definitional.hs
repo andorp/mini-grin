@@ -15,7 +15,7 @@ import Grin.Examples
 import qualified Grin.Exp as Grin (Val)
 import Grin.Interpreter.Base
 import Lens.Micro.Platform
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 import Data.Text (Text, isPrefixOf, unpack)
 import Data.Word
 import Data.Int

@@ -2,7 +2,7 @@
 module Grin.Interpreter.Base where
 
 import Data.Function (fix)
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 import Control.Monad.Fail
 import Grin.Exp hiding (Val)
 import Grin.Pretty
@@ -59,16 +59,6 @@ instance (Ord a, Monoid v) => Monoid (Store a v) where
 
 instance (Pretty a, Pretty v) => Pretty (Store a v) where
   pretty (Store m) = prettyKeyValue (Map.toList m)
-
-{-
-instance Pretty TypeEnv where
-  pretty TypeEnv{..} = vsep
-    [ yellow (text "Location") <$$> indent 4 (prettyKeyValue $ zip [(0 :: Int)..] $ map T_NodeSet $ V.toList _location)
-    , yellow (text "Variable") <$$> indent 4 (prettyKeyValue $ Map.toList _variable)
-    , yellow (text "Function") <$$> indent 4 (vsep $ map prettyFunction $ Map.toList _function)
-    ]
-
--}
 
 -- * Interpreter
 
@@ -134,7 +124,6 @@ ev ev = \case
 
   SApp fn ps -> do
     p <- askEnv
---    liftIO $ print (fn, ps, p)
     vs <- pure $ map (lookupEnv p) ps
     op <- isOperation fn
     (if op then operation else funCall ev) fn vs
@@ -180,7 +169,8 @@ ev ev = \case
     _ <- ev lhs
     ev rhs
 
-  Alt _ body -> ev body
+  Alt p body -> do
+    ev body
 
   other -> error $ show ("ev", other)
 
