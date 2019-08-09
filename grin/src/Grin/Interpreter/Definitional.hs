@@ -9,14 +9,14 @@ import Control.Monad.Reader (MonadReader(..))
 import Control.Monad.State (MonadState(..))
 import Control.Monad.Trans.Reader hiding (ask, local)
 import Control.Monad.Trans.State hiding (state, get)
-import Data.Maybe (fromJust, mapMaybe, fromMaybe, isNothing)
+import Data.Maybe (fromJust, fromMaybe, isNothing)
 import Grin.Exp hiding (Loc, Val)
 import Grin.Examples
 import qualified Grin.Exp as Grin (Val)
 import Grin.Interpreter.Base
 import Lens.Micro.Platform
 import qualified Data.Map.Strict as Map
-import Data.Text (Text, isPrefixOf, unpack)
+import Data.Text (Text)
 import Data.Word
 import Data.Int
 
@@ -92,15 +92,16 @@ instance (Applicative m, Monad m, MonadFail m) => Interpreter (DefinitionalT m) 
       vs <- pure $ map (lookupEnv p) ps
       pure $ DNode $ Node t0 $ map (\case
         DVal v -> v
-        other -> error $ show ("value", other)
+        other -> error $ "value " ++ show other
         ) vs
     (Lit l) -> pure $ DVal $ lit2sval l
     Unit    -> pure $ DUnit
+    (Var v) -> error $ "value " ++ nameString v
 
   val2addr :: DVal -> DefinitionalT m Loc
   val2addr = \case
     (DVal (SLoc l)) -> pure l
-    other           -> error $ show ("val2addr", other)
+    other           -> error $ "val2addr" ++ show other
 
   addr2val :: Loc -> DefinitionalT m DVal
   addr2val = pure . DVal . SLoc
@@ -111,7 +112,7 @@ instance (Applicative m, Monad m, MonadFail m) => Interpreter (DefinitionalT m) 
   val2heapVal :: DVal -> DefinitionalT m Node
   val2heapVal = \case
     DNode n -> pure n
-    other   -> error $ show ("val2HeapVal", other)
+    other   -> error $ "val2HeapVal:" ++ show other
 
   name2AllocCtx :: Name -> DefinitionalT m HeapCtx
   name2AllocCtx _ = pure HeapCtx
@@ -122,7 +123,7 @@ instance (Applicative m, Monad m, MonadFail m) => Interpreter (DefinitionalT m) 
   bindPattern :: DVal -> (Tag, [Name]) -> DefinitionalT m [(Name, DVal)]
   bindPattern (DNode (Node t0 vs)) (t1, ps)
     | t0 == t1  = pure (ps `zip` (DVal <$> vs))
-    | otherwise = error "bindPattern"
+  bindPattern pattern match = error $ "bindPattern: " ++ show (pattern, match)
 
   askEnv :: (DefinitionalT m) (Env DVal)
   askEnv = _defEnv <$> ask
@@ -142,29 +143,31 @@ instance (Applicative m, Monad m, MonadFail m) => Interpreter (DefinitionalT m) 
     lift (lift (op params))
 
   evalCase :: (Exp -> (DefinitionalT m) DVal) -> DVal -> [Alt] -> (DefinitionalT m) DVal
-  evalCase ev v alts = evalBranch v $ head $ filter (\(Alt p b) -> match v p) alts
+  evalCase ev0 v alts = evalBranch v $ head $ filter (\(Alt p _b) -> match v p) alts
     where
       match :: DVal -> CPat -> Bool
-      match DUnit                 p               = error $ show ("matching failure:", DUnit, p)
-      match (DVal (SLoc l))       p               = error $ show ("matching failure:", l, p)
-      match (DNode (Node t0 ps))  (NodePat t1 vs) = t0 == t1
+      match DUnit                 p               = error $ "matching failure:" ++ show (DUnit, p)
+      match (DVal (SLoc l))       p               = error $ "matching failure:" ++ show (l, p)
+      match (DNode (Node t0 _p))  (NodePat t1 _v) = t0 == t1
       match (DVal l0)             (LitPat l1)     = l0 == (lit2sval l1)
       match (DNode{})             DefaultPat      = True
       match (DVal{})              DefaultPat      = True
       match _                     _               = False
 
       evalBranch :: DVal -> Alt -> (DefinitionalT m) DVal
-      evalBranch (DNode (Node t0 vs)) (Alt (NodePat t1 nps) body) = do
-        p <- askEnv
-        let p' = extendEnv p (nps `zip` (DVal <$> vs))
-        localEnv p' (ev body)
-      evalBranch _                    (Alt _               body) = ev body
+      evalBranch (DNode (Node t0 vs)) (Alt (NodePat t1 nps) body)
+        | t0 == t1 = do
+            p <- askEnv
+            let p' = extendEnv p (nps `zip` (DVal <$> vs))
+            localEnv p' (ev0 body)
+      evalBranch _                    (Alt _               body) = ev0 body
+      evalBranch pat alt = error $ "evalBranch: " ++ show (pat, alt)
 
   funCall :: (Exp -> DefinitionalT m DVal) -> Name -> [DVal] -> DefinitionalT m DVal
-  funCall ev fn vs = do
+  funCall ev0 fn vs = do
     (Def _ fps body) <- lookupFun fn
     let p' = extendEnv emptyEnv (fps `zip` vs)
-    localEnv p' (ev body)
+    localEnv p' (ev0 body)
 
   getStore :: DefinitionalT m (Store Loc Node)
   getStore = DefinitionalT get
@@ -213,11 +216,17 @@ evalDefinitional prog = do
   where
     exts = externals prog
     prim_int_add    [(DVal (SInt64 a)),(DVal (SInt64 b))] = pure (DVal (SInt64 (a + b)))
+    prim_int_add    ps = error $ "prim_int_add " ++ show ps
     prim_int_sub    [(DVal (SInt64 a)),(DVal (SInt64 b))] = pure (DVal (SInt64 (a - b)))
+    prim_int_sub    ps = error $ "prim_int_sub " ++ show ps
     prim_int_mul    [(DVal (SInt64 a)),(DVal (SInt64 b))] = pure (DVal (SInt64 (a * b)))
+    prim_int_mul    ps = error $ "prim_int_mul " ++ show ps
     prim_int_eq     [(DVal (SInt64 a)),(DVal (SInt64 b))] = pure (DVal (SBool (a == b)))
+    prim_int_eq     ps = error $ "prim_int_eq " ++ show ps
     prim_int_gt     [(DVal (SInt64 a)),(DVal (SInt64 b))] = pure (DVal (SBool (a > b)))
+    prim_int_gt     ps = error $ "prim_int_gt " ++ show ps
     prim_int_print  [(DVal (SInt64 i))] = liftIO $ print i >> pure DUnit
+    prim_int_print  ps = error $ "prim_int_print " ++ show ps
 
 -- * Test runs
 
