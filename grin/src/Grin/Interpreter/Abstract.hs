@@ -2,35 +2,31 @@
 {-# LANGUAGE MultiParamTypeClasses, RankNTypes, ScopedTypeVariables, RecordWildCards #-}
 module Grin.Interpreter.Abstract where
 
-import Data.Function (fix)
-import Prelude hiding (fail)
 import Control.Applicative (Alternative(..))
 import Control.Monad (MonadPlus(..), forM_, msum, filterM)
-import Data.Maybe (isNothing)
-import Grin.Exp hiding (Val, Loc, TypeEnv(..))
-import Grin.Pretty
-import Grin.Examples
-import qualified Grin.Exp as Grin
-import Grin.Interpreter.Base
-import Data.Maybe (fromMaybe, fromJust)
-import Lens.Micro.Platform
 import Control.Monad (when)
 import Control.Monad.Fail (MonadFail(..))
-import Control.Monad.State (MonadState(..))
-import Control.Monad.Reader (MonadReader(..))
-import Control.Monad.Trans.State hiding (MonadState(..), get)
-import Control.Monad.Trans.Reader hiding (MonadReader(..), local, ask)
-import Control.Monad.Trans.RWS hiding (ask, local, get)
 import Control.Monad.IO.Class (MonadIO(..))
-import Data.Functor.Infix ((<$$>))
 import Control.Monad.Logic hiding (fail)
+import Control.Monad.Reader (MonadReader(..))
+import Control.Monad.State (MonadState(..))
+import Control.Monad.Trans.RWS hiding (ask, local, get)
+import Data.Function (fix)
+import Data.Maybe (fromMaybe, fromJust)
+import Data.Maybe (isNothing)
+import Grin.Examples
+import Grin.Exp hiding (Val, Loc, TypeEnv(..))
+import Grin.Interpreter.Base
+import Grin.Pretty
+import Lens.Micro.Platform
+import Prelude hiding (fail)
 import Text.PrettyPrint.ANSI.Leijen hiding (SChar, (<$>), (<$$>))
-import qualified Text.PrettyPrint.ANSI.Leijen as PP
-import qualified Text.PrettyPrint.ANSI.Leijen.Internal as PP
 
-import qualified Data.List as List ((\\), nub)
+import qualified Data.List as List (nub)
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set; import Data.Set (Set)
+import qualified Grin.Exp as Grin
+import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 
 data ST
@@ -45,7 +41,7 @@ data ST
 
 instance Pretty ST where
   pretty = \case
-    l@(SLoc h) -> {-encloseSep lbrace rbrace comma $ map (cyan . int)-} cyan $ pretty h
+    (SLoc h) -> cyan $ pretty h
     ty -> red $ text $ show ty
 
 data Node = Node Tag [ST]
@@ -249,6 +245,7 @@ typeOfLit = \case
   LString _ -> ST SString
   LChar   _ -> ST SChar
 
+-- Chapter 2: Fill out the missing definitions that the 3 test pass
 instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
   type Val      (AbstractT m) = T
   type HeapVal  (AbstractT m) = Node
@@ -263,15 +260,16 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
       ts <- pure $ map (lookupEnv p) ps
       pure $ NT $ Node tag $ map (\case
         ST t -> t
-        other -> error $ show ("value", other) -- TODO: Include type error
+        other -> error $ unwords ["value", show other] -- TODO: Include type error
         ) ts
     (Lit l) -> pure $ typeOfLit l
     Unit    -> pure $ UT
+    (Var v) -> error $ unwords ["value", nameString v]
 
   val2addr :: T -> AbstractT m Loc
   val2addr = \case
     ST (SLoc l) -> pure l
-    other       -> error $ show ("val2addr", other)
+    other       -> error $ unwords ["val2addr", show other]
 
   addr2val :: Loc -> AbstractT m T
   addr2val l = pure $ ST $ SLoc l
@@ -279,7 +277,7 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
   val2heapVal :: T -> AbstractT m Node
   val2heapVal = \case
     NT n -> pure n
-    other -> error $ show ("val2heapVal", other)
+    other -> error $ unwords ["val2heapVal", show other]
 
   heapVal2val :: Node -> AbstractT m T
   heapVal2val = pure . NT
@@ -295,7 +293,7 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
     NT (Node t1 ps1)
       | t1 == tag -> pure (ps `zip` (ST <$> ps1))
       | otherwise -> mzero
-    other -> error $ show ("bindPattern", other)
+    other -> error $ unwords ["bindPattern", show other]
 
   -- non-pure
   askEnv :: AbstractT m (Env T)
@@ -307,7 +305,7 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
     local (absEnv .~ env) m
 
   lookupFun :: Name -> AbstractT m Exp
-  lookupFun fn = (fromMaybe (error $ show ("lookupFun", fn)) . Map.lookup fn . _absFun) <$> ask
+  lookupFun fn = (fromMaybe (error $ unwords ["lookupFun", nameString fn]) . Map.lookup fn . _absFun) <$> ask
 
   isOperation :: Name -> AbstractT m Bool
   isOperation n = (Map.member n . _absOps) <$> ask
@@ -315,34 +313,36 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
   operation :: Name -> [T] -> AbstractT m T
   operation n ps = do
     (r,ts) <- (fromJust . Map.lookup n . _absOps) <$> ask
-    when (ps /= ts) $ error $ show ("operation", n, ps, ts)
+    when (ps /= ts) $ error $ unwords ["operation", nameString n, show ps, show ts]
     appendFunOut (n,ts,r)
     pure r
 
   evalCase :: (Exp -> AbstractT m T) -> T -> [Alt] -> AbstractT m T
-  evalCase ev v alts = do
+  evalCase ev0 v alts = do
     selectedAlts <- filterM isMatching alts
     forMonadPlus selectedAlts extendAlt
     where
-      isMatching (Alt DefaultPat     _) = pure True
-      isMatching (Alt (LitPat l)     _) = (v ==) <$> value (Lit l)
-      isMatching (Alt (NodePat t ps) _) = case v of
+      isMatching (Alt DefaultPat      _) = pure True
+      isMatching (Alt (LitPat l)      _) = (v ==) <$> value (Lit l)
+      isMatching (Alt (NodePat t _ps) _) = case v of
         NT (Node t0 _) -> pure $ t == t0
-        other          -> pure False
+        _nonNodeType   -> pure False
+      isMatching overGenerative = error $ show overGenerative
 
-      extendAlt alt@(Alt DefaultPat     body) = ev alt
-      extendAlt alt@(Alt (LitPat _)     body) = ev alt
-      extendAlt alt@(Alt (NodePat _ ns) body) = case v of
-        NT (Node t0 vs) -> do
+      extendAlt alt@(Alt DefaultPat     _body) = ev0 alt
+      extendAlt alt@(Alt (LitPat _)     _body) = ev0 alt
+      extendAlt alt@(Alt (NodePat _ ns) _body) = case v of
+        NT (Node _t0 vs) -> do
           p <- askEnv
-          localEnv (extendEnv p (ns `zip` (ST <$> vs))) $ ev alt
-        other -> error $ show ("extendAlt", other)
+          localEnv (extendEnv p (ns `zip` (ST <$> vs))) $ ev0 alt
+        nonNodeType -> error $ show nonNodeType
+      extendAlt overGenerative = error $ show overGenerative
 
   funCall :: (Exp -> AbstractT m T) -> Name -> [T] -> AbstractT m T
-  funCall ev fn vs = do
+  funCall ev0 fn vs = do
     (Def _ fps body) <- lookupFun fn
     let p' = extendEnv emptyEnv (fps `zip` vs)
-    v <- localEnv p' (ev body)
+    v <- localEnv p' (ev0 body)
     appendFunOut (fn,vs,v)
     pure v
 
@@ -380,25 +380,25 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
 evalCache
   :: (Monad m, MonadFail m, MonadIO m)
   => ((Exp -> AbstractT m T) -> (Exp -> AbstractT m T)) -> (Exp -> AbstractT m T) -> Exp -> AbstractT m T
-evalCache ev0 ev e = do
+evalCache ev0 ev1 e = do
   p   <- askEnv
   o   <- getStore
   case (exp2CExp e) of
-    n@Nothing -> do
-      ev0 ev e
+    Nothing -> do
+      ev0 ev1 e
     Just ce -> do
       let c = Config { cfgEnv = p, cfgStore = o, cfgExp = ce }
       outc <- getCacheOut
       if inCache c outc
         then do
-          forMonadPlus (getCache c outc) $ \(v,o) -> do
-            putStore o
+          forMonadPlus (getCache c outc) $ \(v,o0) -> do
+            putStore o0
             pure v
         else do
           inc <- askCacheIn
           let vo0 = if inCache c inc then (getCache c inc) else []
           putCacheOut (insertCache c vo0 outc)
-          v <- ev0 ev e
+          v <- ev0 ev1 e
           o' <- getStore
           updateCacheOut (insertCache c [(v,o')])
           pure v
@@ -413,16 +413,13 @@ mlfp f = loop mempty where
       else loop x'
 
 fixCache :: (MonadFail m, MonadIO m) => (t -> AbstractT m a) -> t -> AbstractT m ()
-fixCache eval e = do
-  p <- askEnv
+fixCache eval0 e = do
   o <- getStore
-  dp <- mlfp $ \cin -> do
-          putCacheOut mempty
-          putStore o
-          localCacheIn cin $ eval e
-          r <- getCacheOut
-          pure r
-  pure ()
+  void $ mlfp $ \cin -> do
+    putCacheOut mempty
+    putStore o
+    void $ localCacheIn cin $ eval0 e
+    getCacheOut
 
 evalAbstractOne :: (Monad m, MonadFail m, MonadIO m) => Program -> m (TypeEnv, Cache)
 evalAbstractOne prog = do
@@ -449,19 +446,19 @@ evalAbstractOne prog = do
 
 runAdd :: IO ()
 runAdd = do
-  (typeEnv, cache) <- evalAbstractOne add
+  (typeEnv, _cache) <- evalAbstractOne add
   print $ PP typeEnv
   print $ PP $ calcTypeEnv typeEnv
 
 runFact :: IO ()
 runFact = do
-  (typeEnv, cache) <- evalAbstractOne fact
+  (typeEnv, _cache) <- evalAbstractOne fact
   print $ PP typeEnv
   print $ PP $ calcTypeEnv typeEnv
 
 runSum :: IO ()
 runSum = do
-  (typeEnv, cache) <- evalAbstractOne sumSimple
+  (typeEnv, _cache) <- evalAbstractOne sumSimple
   print $ PP typeEnv
   print $ PP $ calcTypeEnv typeEnv
 
@@ -514,13 +511,14 @@ unifyNodeSet ns0 ns1 = sequence $ Map.unionWith unifyParams (Map.map Just ns0) (
 unifySimpleType :: SimpleType -> SimpleType -> Maybe SimpleType
 unifySimpleType t1 t2 = case (t1,t2) of
   (T_Location l1, T_Location l2)  -> Just $ T_Location (List.nub $ l1 ++ l2)
-  (t1, t2) | t1 == t2             -> Just t1
-           | otherwise            -> Nothing
+  (st1, st2) | st1 == st2         -> Just st2
+             | otherwise          -> Nothing
 
 unifyType :: Type -> Type -> Maybe Type
 unifyType t1 t2 = case (t1,t2) of
-  (T_NodeSet n1, T_NodeSet n2) -> T_NodeSet <$> unifyNodeSet n1 n2
-  (T_SimpleType t1, T_SimpleType t2) -> T_SimpleType <$> unifySimpleType t1 t2
+  (T_NodeSet n1,     T_NodeSet n2)     -> T_NodeSet    <$> unifyNodeSet n1 n2
+  (T_SimpleType st1, T_SimpleType st2) -> T_SimpleType <$> unifySimpleType st1 st2
+  _ -> Nothing
 
 funcToFunctions :: Map.Map Loc Int -> Map.Map Name FunctionT -> Map.Map Name (Type, [Type])
 funcToFunctions ml = Map.map

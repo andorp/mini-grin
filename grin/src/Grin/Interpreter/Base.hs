@@ -68,11 +68,14 @@ grinMain = \case
   _                -> error "grinMain"
 
 -- Open recursion and monadic interpreter.
+-- Chapter 1: Write a simple interpreter using the Typed Representation.
+-- Env and Store
 ev  :: (MonadIO m, Interpreter m, a ~ Addr m, v ~ Val m, Show v)
     => (Exp -> m (Val m)) -> Exp -> m (Val m)
 ev ev0 = \case
   SPure n@(ConstTagNode{})  -> value n
   SPure l@(Lit{})           -> value l
+  SPure u@Unit              -> value u
   SPure (Var n)           -> do
     p <- askEnv
     pure $ lookupEnv p n
