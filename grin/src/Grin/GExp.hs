@@ -1,5 +1,5 @@
 {-# LANGUAGE DataKinds, GADTs, KindSignatures, PolyKinds, TypeFamilies, TypeOperators, RankNTypes, LambdaCase, ConstraintKinds #-}
-module Grin.TypeSafeExp where
+module Grin.GExp where
 
 import Data.Kind (Constraint)
 import Grin.Exp hiding (Exp(..))
@@ -27,7 +27,7 @@ data Exp (ctx :: ExpCtx) where
   EBind   :: (Elem lhs ['SECtx, 'CaseCtx], Elem rhs ['SECtx, 'CaseCtx, 'ECtx])
           => Exp lhs -> Val -> Exp rhs -> Exp 'ECtx
 
--- Exercise 1.1: Write a conversion from the Type-Safe Expression
+-- Chapter 1: Write a conversion from the Type-Safe Expression
 -- to the overgenerative one
 toNonSafeExp :: forall ctx . Exp ctx -> Grin.Exp
 toNonSafeExp = \case

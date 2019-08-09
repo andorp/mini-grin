@@ -68,8 +68,12 @@ grinMain = \case
   _                -> error "grinMain"
 
 -- Open recursion and monadic interpreter.
--- Chapter 1: Write a simple interpreter using the Typed Representation.
--- Env and Store
+
+-- Chapter 1: Write a simple interpreter using the GExp, Env, and Store.
+-- Operational semantics is provided in the cheatsheet.
+--
+-- Chapter 1: Compare your interpreter with the open recursion one
+-- below
 ev  :: (MonadIO m, Interpreter m, a ~ Addr m, v ~ Val m, Show v)
     => (Exp -> m (Val m)) -> Exp -> m (Val m)
 ev ev0 = \case

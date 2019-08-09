@@ -16,6 +16,7 @@ library
   ghc-options:         -Wall
   exposed-modules:
     Grin.Exp
+    Grin.GExp
     Grin.Examples
     Grin.Pretty
     Grin.Interpreter.Env
@@ -23,7 +24,6 @@ library
     Grin.Interpreter.Base
     Grin.Interpreter.Definitional
     Grin.Interpreter.Abstract
-    Grin.TypeSafeExp
 --    Transformations.Optimising.SimpleDeadFunctionElimination
 --    Transformations.Optimising.SimpleDeadVariableElimination
 --    Transformations.Optimising.SimpleDeadParameterElimination
