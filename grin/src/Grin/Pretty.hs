@@ -16,28 +16,18 @@ module Grin.Pretty
   , showWide
   ) where
 
-import Data.Char
-import Data.Set (Set)
-import Data.List (groupBy)
-import qualified Data.Set as Set
+import Prelude hiding (exp)
 
-import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as Map
-
-import Data.IntMap (IntMap)
-import qualified Data.IntMap as IntMap
-
-import Data.Vector (Vector)
-import qualified Data.Vector as V
-
-import Data.Text (unpack)
-
+import Data.Function (on)
 import Data.Functor.Foldable as Foldable
+import Data.List (groupBy)
+import Data.List (sortBy)
+import Data.Set (Set)
+import Grin.Exp
 import Text.PrettyPrint.ANSI.Leijen
 
-import Grin.Exp
-import Data.Function (on)
-import Data.List (sortBy)
+import qualified Data.Map.Strict as Map
+import qualified Data.Set as Set
 
 
 showWidth :: Int -> Doc -> String
@@ -65,6 +55,7 @@ instance Pretty a => Show (WPP a) where
 keyword :: String -> Doc
 keyword = yellow . text
 
+keywordR :: String -> Doc
 keywordR = red . text
 
 instance Pretty Name where
@@ -80,22 +71,18 @@ prettyProgram Simple          (Program exts e) = prettyHighlightExternals exts (
 prettyProgram WithExternals p@(Program exts _) = prettyHighlightExternals exts p
 prettyProgram _             p                  = prettyHighlightExternals [] p
 
--- TODO
---  nice colors for syntax highlight
---  better node type syntax (C | F | P)
-
 -- | Print a given expression with highlighted external functions.
 prettyHighlightExternals :: [External] -> Exp -> Doc
-prettyHighlightExternals externals exp = cata folder exp where
+prettyHighlightExternals exts = cata folder where
   folder = \case
-    ProgramF exts defs  -> vcat (prettyExternals exts : defs)
+    ProgramF es defs  -> vcat (prettyExternals es : defs)
     DefF name args exp  -> hsep (pretty name : map pretty args) <+> text "=" <$$> indent 2 exp <> line
     -- Exp
     EBindF simpleexp Unit exp -> simpleexp <$$> exp
     EBindF simpleexp lpat exp -> pretty lpat <+> text "<-" <+> simpleexp <$$> exp
     ECaseF val alts   -> keyword "case" <+> pretty val <+> keyword "of" <$$> indent 2 (vsep alts)
     -- Simple Expr
-    SAppF name args         -> hsep (((if isExternalName externals name then dullyellow else cyan) $ pretty name) : text "$" : map pretty args)
+    SAppF name args         -> hsep (((if isExternalName exts name then dullyellow else cyan) $ pretty name) : text "$" : map pretty args)
     SPureF val              -> keyword "pure" <+> pretty val
     SStoreF val             -> keywordR "store" <+> pretty val
     SFetchF  name           -> keywordR "fetch" <+> pretty name
@@ -180,7 +167,7 @@ instance Pretty Ty where
   pretty = \case
     TyCon name tys      -> braces . hsep $ (green $ pretty name) : map pretty tys
     TyVar name          -> text "%" <> cyan (pretty name)
-    TySimple simpleType -> pretty simpleType
+    TySimple st         -> pretty st
 
 prettyBracedList :: [Doc] -> Doc
 prettyBracedList = encloseSep lbrace rbrace comma
@@ -190,6 +177,3 @@ prettySimplePair (x, y) = pretty x <> pretty y
 
 prettyFunction :: (Pretty a, Pretty name) => (name, (a, [a])) -> Doc
 prettyFunction (name, (ret, args)) = pretty name <> align (encloseSep (text " :: ") empty (text " -> ") (map pretty $ args ++ [ret]))
-
-prettyLocSet :: Set Loc -> Doc
-prettyLocSet = semiBraces . map (cyan . int) . Set.toList

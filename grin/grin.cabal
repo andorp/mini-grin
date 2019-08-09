@@ -13,7 +13,7 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   default-extensions:  OverloadedStrings
-  ghc-options:         -Wall
+  ghc-options:         -Wall -Wno-orphans
   exposed-modules:
     Grin.Exp
     Grin.GExp
