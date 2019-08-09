@@ -1,64 +1,22 @@
 {-# LANGUAGE LambdaCase, GeneralizedNewtypeDeriving, InstanceSigs, TypeFamilies, TemplateHaskell, ScopedTypeVariables #-}
-module Grin.Interpreter.Base where
+module Grin.Interpreter.Base
+  ( module Grin.Interpreter.Env
+  , module Grin.Interpreter.Store
+  , module Grin.Interpreter.Base
+  ) where
 
-import Data.Function (fix)
-import qualified Data.Map.Strict as Map
+import Control.Monad (void)
 import Control.Monad.Fail
+import Control.Monad.Trans (MonadIO)
+import Data.Function (fix)
+import Data.Maybe (mapMaybe)
 import Grin.Exp hiding (Val)
-import Grin.Pretty
+import Grin.Interpreter.Env
+import Grin.Interpreter.Store
+
+import qualified Data.Map.Strict as Map
 import qualified Grin.Exp as Grin
-import Data.Maybe (fromJust, mapMaybe, fromMaybe)
-import Control.Monad.Trans (MonadIO(liftIO), lift)
-import Data.List (foldl')
-import Debug.Trace (traceShowId)
-import Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
 
-
--- * Env
-
-newtype Env v = Env (Map.Map Name v)
-  deriving (Eq, Show, Ord, Functor)
-
-emptyEnv :: Env v
-emptyEnv = Env mempty
-
-lookupEnv :: (Env v) -> Name -> v
-lookupEnv (Env m) n = fromMaybe (error $ "Missing:" ++ show n) $ Map.lookup n m
-
-extendEnv :: Env v -> [(Name, v)] -> Env v
-extendEnv (Env m) vs = Env $ foldl' (\n (k,v) -> Map.insert k v n) m vs
-
-instance (Semigroup v) => Semigroup (Env v) where
-  Env m1 <> Env m2 = Env (Map.unionWith (<>) m1 m2)
-
-instance (Semigroup v) => Monoid (Env v) where
-  mempty = Env mempty
-
-instance (Pretty v) => Pretty (Env v) where
-  pretty (Env m) = prettyKeyValue (Map.toList m)
-
--- * Store
-
-newtype Store a v = Store (Map.Map a v)
-  deriving (Eq, Ord, Show)
-
-emptyStore :: (Ord a) => Store a v
-emptyStore = Store mempty
-
-storeFind :: (Ord a) => Store a v -> a -> v
-storeFind (Store m) a = fromMaybe (error "Store; missing") $ Map.lookup a m
-
-storeExt :: (Ord a) => a -> v -> Store a v -> Store a v
-storeExt a v (Store m) = Store (Map.insert a v m)
-
-instance (Ord a, Semigroup v) => Semigroup (Store a v) where
-  (Store ma) <> (Store mb) = Store (Map.unionWith (<>) ma mb)
-
-instance (Ord a, Monoid v) => Monoid (Store a v) where
-  mempty = Store mempty
-
-instance (Pretty a, Pretty v) => Pretty (Store a v) where
-  pretty (Store m) = prettyKeyValue (Map.toList m)
 
 -- * Interpreter
 
@@ -103,25 +61,19 @@ class (Monad m, MonadFail m) => Interpreter m where
   extStore     :: Val m -> Val m -> m ()
 
 grinMain :: Program -> Exp
-grinMain (Program _ defs) = gmain
-  where
-    gmain = head $ mapMaybe (\(Def n _ b) -> if n == "main" then Just b else Nothing) defs
-
-debug :: (Interpreter m, MonadIO m, Show v, v ~ Val m) => (Exp -> m (Val m)) -> Exp -> m (Val m)
-debug ev e = do
-  p <- askEnv
-  liftIO $ case e of
-    SApp fn ps -> print (fn, ps)
-    _          -> pure ()
-  ev e
+grinMain = \case
+  (Program _ defs) -> head $ flip mapMaybe defs $ \case
+                        (Def n _ b) -> if n == "main" then Just b else Nothing
+                        _           -> Nothing
+  _                -> error "grinMain"
 
 -- Open recursion and monadic interpreter.
 ev  :: (MonadIO m, Interpreter m, a ~ Addr m, v ~ Val m, Show v)
     => (Exp -> m (Val m)) -> Exp -> m (Val m)
-ev ev = \case
+ev ev0 = \case
   SPure n@(ConstTagNode{})  -> value n
   SPure l@(Lit{})           -> value l
-  SPure v@(Var n)           -> do
+  SPure (Var n)           -> do
     p <- askEnv
     pure $ lookupEnv p n
 
@@ -129,7 +81,7 @@ ev ev = \case
     p <- askEnv
     vs <- pure $ map (lookupEnv p) ps
     op <- isOperation fn
-    (if op then operation else funCall ev) fn vs
+    (if op then operation else funCall ev0) fn vs
 
   SFetch n -> do
     p <- askEnv
@@ -147,7 +99,7 @@ ev ev = \case
     p <- askEnv
     v <- pure $ lookupEnv p n
     -- Select the alternative and continue the evaluation
-    evalCase ev v alts
+    evalCase ev0 v alts
 
   EBind (SStore n) (Var l) rhs -> do
     p <- askEnv
@@ -156,31 +108,33 @@ ev ev = \case
     a  <- allocStore ac
     extStore a v
     let p' = extendEnv p [(l, a)]
-    localEnv p' (ev rhs)
+    localEnv p' (ev0 rhs)
 
   EBind lhs (Var n) rhs -> do
-    v <- ev lhs
+    v <- ev0 lhs
     p <- askEnv
     let p' = extendEnv p [(n, v)]
-    localEnv p' (ev rhs)
+    localEnv p' (ev0 rhs)
 
-  EBind lhs c@(ConstTagNode t@(Tag{}) vs) rhs -> do
-    v   <- ev lhs
+  EBind lhs (ConstTagNode t@(Tag{}) vs) rhs -> do
+    v   <- ev0 lhs
     p   <- askEnv
     p'  <- extendEnv p <$> bindPattern v (t,vs)
-    localEnv p' (ev rhs)
+    localEnv p' (ev0 rhs)
 
   EBind lhs Unit rhs -> do
-    _ <- ev lhs
-    ev rhs
+    void $ ev0 lhs
+    ev0 rhs
 
-  Alt p body -> do
-    ev body
+  Alt _pat body -> do
+    ev0 body
 
-  other -> error $ show ("ev", other)
+  overGenerative -> error $ show overGenerative
 
 eval :: (Interpreter m, MonadIO m, Show v, v ~ Val m) => Exp -> m v
-eval e = fix (debug . ev) e
+eval e = fix ev e
 
 programToDefs :: Program -> Map.Map Name Exp
-programToDefs (Program _ defs) = Map.fromList ((\d@(Def n _ _) -> (n,d)) <$> defs)
+programToDefs = \case
+  (Program _ defs) -> Map.fromList ((\d@(Def n _ _) -> (n,d)) <$> defs)
+  _                -> mempty

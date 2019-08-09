@@ -14,10 +14,6 @@ data ExpCtx
   | DefCtx
   | PrgCtx
 
-type family Elem (c :: ExpCtx) (cs :: [ExpCtx]) :: Constraint where
-  Elem c (c : _)  = ()
-  Elem c (d : cs) = Elem c cs
-
 data Exp (ctx :: ExpCtx) where
   Program :: [External] -> [Exp DefCtx]             -> Exp PrgCtx
   Def     :: Name       -> [Name]       -> Exp ECtx -> Exp DefCtx
@@ -31,6 +27,8 @@ data Exp (ctx :: ExpCtx) where
   EBind   :: (Elem lhs [SECtx, CaseCtx], Elem rhs [SECtx, CaseCtx, ECtx])
           => Exp lhs -> Val -> Exp rhs -> Exp ECtx
 
+-- Exercise 1.1: Write a conversion from the Type-Safe Expression
+-- to the overgenerative one
 toNonSafeExp :: forall ctx . Exp ctx -> Grin.Exp
 toNonSafeExp = \case
   Program exts defs -> Grin.Program exts (toNonSafeExp <$> defs)
@@ -43,6 +41,10 @@ toNonSafeExp = \case
   Alt     c body    -> Grin.Alt c $ toNonSafeExp body
   ECase   n alts    -> Grin.ECase n (toNonSafeExp <$> alts)
   EBind   lhs v rhs -> Grin.EBind (toNonSafeExp lhs) v (toNonSafeExp rhs)
+
+type family Elem (c :: ExpCtx) (cs :: [ExpCtx]) :: Constraint where
+  Elem c (c : _)  = ()
+  Elem c (d : cs) = Elem c cs
 
 fact :: Exp PrgCtx
 fact =

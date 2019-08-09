@@ -26,7 +26,6 @@ import Text.Printf
 -- when we seralize the Exp
 data Name
   = NM { unNM :: !Text }
-  | NI !Int
   deriving (Generic, Data, NFData, Eq, Ord, Show)
 
 nMap :: (Text -> Text) -> Name -> Name
@@ -245,7 +244,3 @@ _TySimple _ other        = pure other
 _NM :: Traversal' Name Text
 _NM f (NM n) = NM <$> f n
 _NM _ other  = pure other
-
-_NI :: Traversal' Name Int
-_NI f (NI i) = NI <$> f i
-_NI _ other  = pure other
