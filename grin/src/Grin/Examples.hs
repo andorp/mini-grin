@@ -1,9 +1,12 @@
 module Grin.Examples where
 
 import Grin.Exp
+import Grin.Value
+import Grin.TypeEnv
 
 -- * Test expression
 
+add :: Program
 add =
   Program
     [ External "prim_int_add" (TySimple T_Int64) [TySimple T_Int64, TySimple T_Int64] False PrimOp
@@ -15,6 +18,7 @@ add =
         SApp "add" ["m1", "m2"]
     ]
 
+fact :: Program
 fact =
   Program
     [ External "prim_int_sub"   (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64] False PrimOp
@@ -41,6 +45,7 @@ fact =
         SApp "prim_int_print" ["m2"]
     ]
 
+sumSimple :: Program
 sumSimple =
   Program
     [ External "prim_int_add"   (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64] False PrimOp

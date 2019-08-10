@@ -10,9 +10,10 @@ import Control.Monad.State (MonadState(..))
 import Control.Monad.Trans.Reader hiding (ask, local)
 import Control.Monad.Trans.State hiding (state, get)
 import Data.Maybe (fromJust, fromMaybe, isNothing)
-import Grin.Exp hiding (Loc, Val)
+import Grin.Exp
+import Grin.Value hiding (Val)
 import Grin.Examples
-import qualified Grin.Exp as Grin (Val)
+import qualified Grin.Value as Grin (Val)
 import Grin.Interpreter.Base
 import Lens.Micro.Platform
 import qualified Data.Map.Strict as Map

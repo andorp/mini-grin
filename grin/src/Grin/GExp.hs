@@ -3,6 +3,8 @@ module Grin.GExp where
 
 import Data.Kind (Constraint)
 import Grin.Exp hiding (Exp(..))
+import Grin.Value
+import Grin.TypeEnv
 import qualified Grin.Exp as Grin
 
 

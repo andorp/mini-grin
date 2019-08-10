@@ -10,12 +10,13 @@ import Control.Monad.Fail
 import Control.Monad.Trans (MonadIO)
 import Data.Function (fix)
 import Data.Maybe (mapMaybe)
-import Grin.Exp hiding (Val)
+import Grin.Exp
+import Grin.Value hiding (Val)
 import Grin.Interpreter.Env
 import Grin.Interpreter.Store
 
 import qualified Data.Map.Strict as Map
-import qualified Grin.Exp as Grin
+import qualified Grin.Value as Grin
 
 
 -- * Interpreter

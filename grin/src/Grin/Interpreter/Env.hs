@@ -3,8 +3,8 @@ module Grin.Interpreter.Env where
 
 import Data.List (foldl')
 import Data.Maybe (fromMaybe)
-import Grin.Exp hiding (Val)
 import Grin.Pretty
+import Grin.Value
 import qualified Data.Map.Strict as Map
 
 -- * Env

@@ -15,17 +15,19 @@ import Data.Function (fix)
 import Data.Maybe (fromMaybe, fromJust)
 import Data.Maybe (isNothing)
 import Grin.Examples
-import Grin.Exp hiding (Val, Loc, TypeEnv(..))
+import Grin.Exp
+import Grin.TypeEnv hiding (TypeEnv(..), Loc)
+import Grin.Value hiding (Val)
 import Grin.Interpreter.Base
-import Grin.Pretty
+import Grin.Pretty hiding (SChar)
 import Lens.Micro.Platform
 import Prelude hiding (fail)
-import Text.PrettyPrint.ANSI.Leijen hiding (SChar, (<$>), (<$$>))
 
 import qualified Data.List as List (nub)
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set; import Data.Set (Set)
-import qualified Grin.Exp as Grin
+import qualified Grin.TypeEnv as Grin
+import qualified Grin.Value as Grin
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 
