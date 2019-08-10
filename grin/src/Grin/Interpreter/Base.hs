@@ -109,7 +109,7 @@ ev ev0 = \case
     -- Select the alternative and continue the evaluation
     evalCase ev0 v alts
 
-  EBind (SStore n) (Var l) rhs -> do
+  EBind (SStore n) (BVar l) rhs -> do
     p <- askEnv
     let v = lookupEnv p n
     ac <- name2AllocCtx l
@@ -118,19 +118,19 @@ ev ev0 = \case
     let p' = extendEnv p [(l, a)]
     localEnv p' (ev0 rhs)
 
-  EBind lhs (Var n) rhs -> do
+  EBind lhs (BVar n) rhs -> do
     v <- ev0 lhs
     p <- askEnv
     let p' = extendEnv p [(n, v)]
     localEnv p' (ev0 rhs)
 
-  EBind lhs (ConstTagNode t@(Tag{}) vs) rhs -> do
+  EBind lhs (BNodePat t@(Tag{}) vs) rhs -> do
     v   <- ev0 lhs
     p   <- askEnv
     p'  <- extendEnv p <$> bindPattern v (t,vs)
     localEnv p' (ev0 rhs)
 
-  EBind lhs Unit rhs -> do
+  EBind lhs BUnit rhs -> do
     void $ ev0 lhs
     ev0 rhs
 

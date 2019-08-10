@@ -27,7 +27,7 @@ data Exp (ctx :: ExpCtx) where
   Alt     :: CPat       -> Exp 'ECtx                  -> Exp 'AltCtx
   ECase   :: Name       -> [Exp 'AltCtx]              -> Exp 'CaseCtx
   EBind   :: (Elem lhs ['SECtx, 'CaseCtx], Elem rhs ['SECtx, 'CaseCtx, 'ECtx])
-          => Exp lhs -> Val -> Exp rhs -> Exp 'ECtx
+          => Exp lhs -> BPat -> Exp rhs -> Exp 'ECtx
 
 -- Chapter 1: Write a conversion from the Type-Safe Expression
 -- to the overgenerative one
@@ -57,20 +57,20 @@ fact =
     , External "prim_int_print" (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64] True  PrimOp
     ]
     [ Def "fact" ["f1"] $
-        EBind (SPure (Lit (LInt64 0))) (Var "f2") $
-        EBind (SApp "prim_int_eq" ["f1", "f2"]) (Var "f3") $
+        EBind (SPure (Lit (LInt64 0))) (BVar "f2") $
+        EBind (SApp "prim_int_eq" ["f1", "f2"]) (BVar "f3") $
         ECase "f3"
           [ Alt (LitPat (LBool True)) $
-                EBind (SPure (Lit (LInt64 1))) (Var "f7") $
+                EBind (SPure (Lit (LInt64 1))) (BVar "f7") $
                 SPure (Var "f7")
           , Alt (LitPat (LBool False)) $
-                EBind (SPure (Lit (LInt64 1))) (Var "f4") $
-                EBind (SApp "prim_int_sub" ["f1", "f4"]) (Var "f5") $
-                EBind (SApp "fact" ["f5"]) (Var "f6") $
+                EBind (SPure (Lit (LInt64 1))) (BVar "f4") $
+                EBind (SApp "prim_int_sub" ["f1", "f4"]) (BVar "f5") $
+                EBind (SApp "fact" ["f5"]) (BVar "f6") $
                 SApp "prim_int_mul" ["f1", "f6"]
           ]
     , Def "main" [] $
-        EBind (SPure (Lit (LInt64 10))) (Var "m1") $
-        EBind (SApp "fact" ["m1"]) (Var "m2") $
+        EBind (SPure (Lit (LInt64 10))) (BVar "m1") $
+        EBind (SApp "fact" ["m1"]) (BVar "m2") $
         SApp "prim_int_print" ["m2"]
     ]

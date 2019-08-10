@@ -41,9 +41,17 @@ isExternalName es n = n `Prelude.elem` (eName <$> es)
 -- * Case Pattern
 
 data CPat
-  = NodePat Tag [Name]  -- HIGH level GRIN
-  | LitPat  Lit         -- HIGH level GRIN
-  | DefaultPat          -- HIGH level GRIN
+  = NodePat Tag [Name]
+  | LitPat  Lit
+  | DefaultPat
+  deriving (Eq, Show, Ord)
+
+-- * Bind Pattern
+
+data BPat
+  = BNodePat Tag [Name]
+  | BVar     Name
+  | BUnit
   deriving (Eq, Show, Ord)
 
 -- * GRIN Expression
@@ -57,7 +65,7 @@ data Exp
   = Program     [External] [Def]
   | Def         Name [Name] Exp
   -- Exp
-  | EBind       SimpleExp LPat Exp
+  | EBind       SimpleExp BPat Exp
   | ECase       Name [Alt]
   -- Simple Exp
   | SApp        Name [Name]
@@ -123,6 +131,12 @@ instance Pretty CPat where
     LitPat  lit       -> pretty lit
     DefaultPat        -> keyword "#default"
 
+instance Pretty BPat where
+  pretty = \case
+    BNodePat tag args -> parens $ hsep (pretty tag : fmap pretty args)
+    BVar name         -> pretty name
+    BUnit             -> parens Grin.Pretty.empty
+
 prettyExternals :: [External] -> Doc
 prettyExternals exts = vcat (fmap prettyExtGroup $ groupBy (\a b -> eEffectful a == eEffectful b && eKind a == eKind b) exts) where
   prettyExtGroup [] = mempty
@@ -152,8 +166,8 @@ prettyHighlightExternals exts = cata folder where
     ProgramF es defs  -> vcat (prettyExternals es : defs)
     DefF name args exp  -> hsep (pretty name : fmap pretty args) <+> text "=" <$$> indent 2 exp <> line
     -- Exp
-    EBindF simpleexp Unit exp -> simpleexp <$$> exp
-    EBindF simpleexp lpat exp -> pretty lpat <+> text "<-" <+> simpleexp <$$> exp
+    EBindF simpleexp BUnit exp -> simpleexp <$$> exp
+    EBindF simpleexp lpat  exp -> pretty lpat <+> text "<-" <+> simpleexp <$$> exp
     ECaseF val alts   -> keyword "case" <+> pretty val <+> keyword "of" <$$> indent 2 (vsep alts)
     -- Simple Expr
     SAppF name args         -> hsep (((if isExternalName exts name then dullyellow else cyan) $ pretty name) : text "$" : fmap pretty args)

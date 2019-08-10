@@ -52,7 +52,6 @@ data Lit
 
 -- * GRIN Value
 
-type LPat = Val -- ConstTagNode, VarTagNode, ValTag, Unit, Lit, Var
 type SimpleVal = Val
 
 data Val
