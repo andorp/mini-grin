@@ -1,14 +1,33 @@
-{-# LANGUAGE DataKinds #-}
-module Grin.Examples where
+module Tutorial.Chapter01.Exercise01Spec where
 
-import Grin.Exp (External(..), ExternalKind(..), BPat(..), CPat(..))
-import Grin.GExp
+import Grin.Exp
 import Grin.Value
 import Grin.TypeEnv
+import qualified Grin.Examples as Examples
 
--- * Test expression
+import Tutorial.Chapter01.Exercise01
 
-add :: Exp 'PrgCtx
+import Test.Hspec
+
+
+main :: IO ()
+main = hspec spec
+
+spec :: Spec
+spec = do
+  describe "GExp to Exp" $ do
+    it "works for Add" $ do
+      (convertGExpToExp Examples.add) `shouldBe` add
+
+    it "works for Fact" $ do
+      (convertGExpToExp Examples.fact) `shouldBe` fact
+
+    it "works for Sum" $ do
+      (convertGExpToExp Examples.sumSimple) `shouldBe` sumSimple
+
+-- * Test data
+
+add :: Exp
 add =
   Program
     [ External "prim_int_add" (TySimple T_Int64) [TySimple T_Int64, TySimple T_Int64] False PrimOp
@@ -22,7 +41,7 @@ add =
         SApp "add" ["m1", "m2"]
     ]
 
-fact :: Exp 'PrgCtx
+fact :: Exp
 fact =
   Program
     [ External "prim_int_sub"   (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64] False PrimOp
@@ -49,7 +68,7 @@ fact =
         SApp "prim_int_print" ["m2"]
     ]
 
-sumSimple :: Exp 'PrgCtx
+sumSimple :: Exp
 sumSimple =
   Program
     [ External "prim_int_add"   (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64] False PrimOp

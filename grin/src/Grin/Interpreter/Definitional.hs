@@ -12,7 +12,6 @@ import Control.Monad.Trans.State hiding (state, get)
 import Data.Maybe (fromJust, fromMaybe, isNothing)
 import Grin.Exp
 import Grin.Value hiding (Val)
-import Grin.Examples
 import qualified Grin.Value as Grin (Val)
 import Grin.Interpreter.Base
 import Lens.Micro.Platform
@@ -229,6 +228,7 @@ evalDefinitional prog = do
     prim_int_print  [(DVal (SInt64 i))] = liftIO $ print i >> pure DUnit
     prim_int_print  ps = error $ "prim_int_print " ++ show ps
 
+{-
 -- * Test runs
 
 runAdd :: IO ()
@@ -241,3 +241,4 @@ runFact = do
 runSum :: IO ()
 runSum = do
   print =<< evalDefinitional sumSimple
+-}

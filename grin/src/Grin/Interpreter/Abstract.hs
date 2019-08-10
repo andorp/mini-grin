@@ -14,7 +14,6 @@ import Control.Monad.Trans.RWS hiding (ask, local, get)
 import Data.Function (fix)
 import Data.Maybe (fromMaybe, fromJust)
 import Data.Maybe (isNothing)
-import Grin.Examples
 import Grin.Exp
 import Grin.TypeEnv hiding (TypeEnv(..), Loc)
 import Grin.Value hiding (Val)
@@ -446,6 +445,7 @@ evalAbstractOne prog = do
     prim_int_gt     = (ST SBool,  [ST SInt64, ST SInt64])
     prim_int_print  = (UT, [ST SInt64])
 
+{-
 runAdd :: IO ()
 runAdd = do
   (typeEnv, _cache) <- evalAbstractOne add
@@ -463,6 +463,7 @@ runSum = do
   (typeEnv, _cache) <- evalAbstractOne sumSimple
   print $ PP typeEnv
   print $ PP $ calcTypeEnv typeEnv
+-}
 
 -- * Convert Abstract.TypeEnv to Grin.TypeEnv
 
