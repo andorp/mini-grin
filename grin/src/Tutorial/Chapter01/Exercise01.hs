@@ -1,4 +1,5 @@
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE GADTs #-}
 module Tutorial.Chapter01.Exercise01 where
 
 import qualified Grin.Exp  as E
