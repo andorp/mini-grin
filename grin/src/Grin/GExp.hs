@@ -19,17 +19,50 @@ data ExpCtx
 -- TODO: Reorganise the constructors, remove the prefixes
 -- TODO: Link GADT syntax
 data Exp (ctx :: ExpCtx) where
-  Program :: [External] -> [Exp 'DefCtx]              -> Exp 'PrgCtx
-  Def     :: Name       -> [Name]        -> Exp 'ECtx -> Exp 'DefCtx
-  SApp    :: Name       -> [Name]                     -> Exp 'SECtx
-  SPure   :: Val                                      -> Exp 'SECtx
-  SStore  :: Name                                     -> Exp 'SECtx
-  SFetch  :: Name                                     -> Exp 'SECtx
-  SUpdate :: Name       -> Name                       -> Exp 'SECtx
-  Alt     :: CPat       -> Exp 'ECtx                  -> Exp 'AltCtx
-  ECase   :: Name       -> [Exp 'AltCtx]              -> Exp 'CaseCtx
-  EBind   :: (Elem lhs ['SECtx, 'CaseCtx], Elem rhs ['SECtx, 'CaseCtx, 'ECtx])
-          => Exp lhs -> BPat -> Exp rhs -> Exp 'ECtx
+  Program
+    :: [External]
+    -> [Exp 'DefCtx]  -- ^ definitions
+    -> Exp 'PrgCtx
+  Def
+    :: Name
+    -> [Name]  -- ^ arguments
+    -> Exp 'ECtx
+    -> Exp 'DefCtx
+  SApp
+    :: Name
+    -> [Name]  -- ^ arguments
+    -> Exp 'SECtx
+  SPure
+    :: Val
+    -> Exp 'SECtx
+  SStore
+    :: Name
+    -> Exp 'SECtx
+  SFetch
+    :: Name
+    -> Exp 'SECtx
+  SUpdate
+    :: Name  -- ^ reference to update
+    -> Name  -- ^ new value
+    -> Exp 'SECtx
+  Alt
+    :: CPat
+    -> Exp 'ECtx  -- ^ continuation
+    -> Exp 'AltCtx
+  ECase
+    :: Name  -- ^ scrutinee
+    -> [Exp 'AltCtx]  -- ^ possible cases
+    -> Exp 'CaseCtx
+  -- |
+  -- > Ebind lhs bpat rhs
+  -- corresponds to
+  -- > lhs >>= \bpat -> rhs
+  EBind
+    :: (Elem lhs ['SECtx, 'CaseCtx], Elem rhs ['SECtx, 'CaseCtx, 'ECtx])
+    => Exp lhs
+    -> BPat
+    -> Exp rhs
+    -> Exp 'ECtx
 
 type family Elem (c :: ExpCtx) (cs :: [ExpCtx]) :: Constraint where
   Elem c (c : _)  = ()
