@@ -115,8 +115,8 @@ class (Monad m, MonadFail m) => Interpreter m where
   -- | Set the local environment
   localEnv      :: Env (Val m) -> m (Val m) -> m (Val m)
   lookupFun     :: Name -> m Exp
-  isOperation   :: Name -> m Bool
-  operation     :: Name -> [Val m] -> m (Val m)
+  isOperation   :: Name -> m Bool                -- TODO: Rename it to external related
+  operation     :: Name -> [Val m] -> m (Val m)  -- TODO: Rename it to external related
   name2NewStoreInfo :: Name -> m (NewStoreInfo m)
 
   -- Control-flow
@@ -129,8 +129,8 @@ class (Monad m, MonadFail m) => Interpreter m where
   updateStore   :: (Store (Addr m) (StoreVal m) -> Store (Addr m) (StoreVal m)) -> m ()
   nextLocStore  :: NewStoreInfo m -> Store (Addr m) (StoreVal m) -> m (Addr m)
   allocStore    :: NewStoreInfo m -> m (Val m)
-  findStore     :: Val m -> m (Val m)
-  extStore      :: Val m -> Val m -> m ()
+  findStore     :: Val m -> m (Val m)      -- TODO: Change this to Addr m??
+  extStore      :: Val m -> Val m -> m ()  --
 
 -- * Helper
 

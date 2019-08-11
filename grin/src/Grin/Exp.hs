@@ -16,6 +16,8 @@ import Grin.Value
 import Lens.Micro.Platform
 import Prelude hiding (exp)
 
+-- TODO: Comment on what is the noise in this module
+-- TODO: Move the Exp definition to the top
 
 -- * GRIN Externals, i.e. primops and foreign function
 data ExternalKind
@@ -56,6 +58,7 @@ data BPat
 
 -- * GRIN Expression
 
+-- TODO:
 type SimpleExp = Exp
 type Alt = Exp
 type Def = Exp

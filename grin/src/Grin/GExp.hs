@@ -14,6 +14,10 @@ data ExpCtx
   | DefCtx  -- Function definitions
   | PrgCtx  -- Program definition
 
+-- TODO: Rename this to GExp
+-- TODO: Comment on the expressions
+-- TODO: Reorganise the constructors, remove the prefixes
+-- TODO: Link GADT syntax
 data Exp (ctx :: ExpCtx) where
   Program :: [External] -> [Exp 'DefCtx]              -> Exp 'PrgCtx
   Def     :: Name       -> [Name]        -> Exp 'ECtx -> Exp 'DefCtx
