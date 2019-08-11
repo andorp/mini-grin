@@ -1,24 +1,25 @@
 {-# LANGUAGE LambdaCase, GeneralizedNewtypeDeriving, InstanceSigs, TypeFamilies, TemplateHaskell, ScopedTypeVariables #-}
 module Grin.Interpreter.Definitional where
 
-import Prelude hiding (fail)
 import Control.Monad (forM_, when)
 import Control.Monad.Fail
-import Control.Monad.Trans (MonadIO(liftIO), lift)
 import Control.Monad.Reader (MonadReader(..))
 import Control.Monad.State (MonadState(..))
+import Control.Monad.Trans (MonadIO(liftIO), lift)
 import Control.Monad.Trans.Reader hiding (ask, local)
 import Control.Monad.Trans.State hiding (state, get)
+import Data.Int
 import Data.Maybe (fromJust, fromMaybe, isNothing)
-import Grin.Exp
-import Grin.Value hiding (Val)
-import qualified Grin.Value as Grin (Val)
-import Grin.Interpreter.Base
-import Lens.Micro.Platform
-import qualified Data.Map.Strict as Map
 import Data.Text (Text)
 import Data.Word
-import Data.Int
+import Grin.Exp
+import Grin.Interpreter.Base
+import Grin.Value hiding (Val, Node)
+import Lens.Micro.Platform
+import Prelude hiding (fail)
+
+import qualified Data.Map.Strict as Map
+import qualified Grin.Value as Grin (Val, Node(..))
 
 
 -- * Definitional Interpreter
@@ -79,15 +80,15 @@ runDefinitionalT prog ops n = runReaderT (evalStateT (definitionalT n) emptyStor
 data HeapCtx = HeapCtx
 
 instance (Applicative m, Monad m, MonadFail m) => Interpreter (DefinitionalT m) where
-  type Val      (DefinitionalT m) = DVal
-  type HeapVal  (DefinitionalT m) = Node
-  type StoreVal (DefinitionalT m) = Node
-  type Addr     (DefinitionalT m) = Loc
-  type StoreCtx (DefinitionalT m) = HeapCtx
+  type Val          (DefinitionalT m) = DVal
+  type HeapVal      (DefinitionalT m) = Node
+  type StoreVal     (DefinitionalT m) = Node
+  type Addr         (DefinitionalT m) = Loc
+  type NewStoreInfo (DefinitionalT m) = HeapCtx
 
   value :: Grin.Val -> DefinitionalT m DVal
   value = \case
-    (ConstTagNode t0 ps) -> do
+    (CNode (Grin.Node t0 ps)) -> do
       p  <- askEnv
       vs <- pure $ map (lookupEnv p) ps
       pure $ DNode $ Node t0 $ map (\case
@@ -106,16 +107,8 @@ instance (Applicative m, Monad m, MonadFail m) => Interpreter (DefinitionalT m) 
   addr2val :: Loc -> DefinitionalT m DVal
   addr2val = pure . DVal . SLoc
 
-  heapVal2val :: Node -> DefinitionalT m DVal
-  heapVal2val = pure . DNode
-
-  val2heapVal :: DVal -> DefinitionalT m Node
-  val2heapVal = \case
-    DNode n -> pure n
-    other   -> error $ "val2HeapVal:" ++ show other
-
-  name2AllocCtx :: Name -> DefinitionalT m HeapCtx
-  name2AllocCtx _ = pure HeapCtx
+  name2NewStoreInfo :: Name -> DefinitionalT m HeapCtx
+  name2NewStoreInfo _ = pure HeapCtx
 
   unit :: DefinitionalT m DVal
   unit = pure DUnit

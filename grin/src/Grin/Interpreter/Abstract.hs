@@ -10,13 +10,13 @@ import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Logic hiding (fail)
 import Control.Monad.Reader (MonadReader(..))
 import Control.Monad.State (MonadState(..))
-import Control.Monad.Trans.RWS hiding (ask, local, get)
+import Control.Monad.Trans.RWS.Strict hiding (ask, local, get)
 import Data.Function (fix)
 import Data.Maybe (fromMaybe, fromJust)
 import Data.Maybe (isNothing)
 import Grin.Exp
 import Grin.TypeEnv hiding (TypeEnv(..), Loc)
-import Grin.Value hiding (Val)
+import Grin.Value hiding (Val, Node)
 import Grin.Interpreter.Base
 import Grin.Pretty hiding (SChar)
 import Lens.Micro.Platform
@@ -248,15 +248,15 @@ typeOfLit = \case
 
 -- Chapter 2: Fill out the missing definitions that the 3 test pass
 instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
-  type Val      (AbstractT m) = T
-  type HeapVal  (AbstractT m) = Node
-  type StoreVal (AbstractT m) = Set Node
-  type Addr     (AbstractT m) = Loc
-  type StoreCtx (AbstractT m) = Name
+  type Val          (AbstractT m) = T
+  type HeapVal      (AbstractT m) = Node
+  type StoreVal     (AbstractT m) = Set Node
+  type Addr         (AbstractT m) = Loc
+  type NewStoreInfo (AbstractT m) = Name
 
   value :: Grin.Val -> AbstractT m T
   value = \case
-    (ConstTagNode tag ps) -> do
+    (CNode (Grin.Node tag ps)) -> do
       p  <- askEnv
       ts <- pure $ map (lookupEnv p) ps
       pure $ NT $ Node tag $ map (\case
@@ -283,8 +283,8 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
   heapVal2val :: Node -> AbstractT m T
   heapVal2val = pure . NT
 
-  name2AllocCtx :: Name -> AbstractT m Name
-  name2AllocCtx = pure
+  name2NewStoreInfo :: Name -> AbstractT m Name
+  name2NewStoreInfo = pure
 
   unit :: AbstractT m T
   unit = pure UT

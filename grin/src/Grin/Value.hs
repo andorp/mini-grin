@@ -54,20 +54,27 @@ data Lit
 
 type SimpleVal = Val
 
-data Val
-  = ConstTagNode  Tag  [Name]       -- complete node (constant tag) ; HIGH level GRIN
-  | Unit                            -- HIGH level GRIN
-  -- simple val
-  | Lit Lit                         -- HIGH level GRIN
-  | Var Name                        -- HIGH level GRIN
+-- | Complete node
+data Node = Node Tag [Name]
   deriving (Generic, Data, Eq, Ord, Show)
+
+data Val
+  = CNode Node
+  | Unit -- TODO: This should not be part of the Literals
+  -- simple val
+  | Lit Lit
+  | Var Name
+  deriving (Generic, Data, Eq, Ord, Show)
+
+instance Pretty Node where
+  pretty (Node tag args) = parens $ hsep (pretty tag : fmap pretty args)
 
 instance Pretty Name where
   pretty = text . nameString
 
 instance Pretty Val where
   pretty = \case
-    ConstTagNode tag args -> parens $ hsep (pretty tag : fmap pretty args)
+    CNode node   -> pretty node
     Unit         -> parens Grin.Pretty.empty
     -- simple val
     Lit lit      -> pretty lit
