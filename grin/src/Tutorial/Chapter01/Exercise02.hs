@@ -46,6 +46,15 @@ externalCalls ext args = case eName ext of
   "prim_int_add" -> case args of
     [VLit (LInt64 a), VLit (LInt64 b)] -> pure $ VLit (LInt64 (a + b))
     _ -> error ("prim_int_add: invalid args: " <> show args)
+  "prim_int_sub" -> case args of
+    [VLit (LInt64 a), VLit (LInt64 b)] -> pure $ VLit (LInt64 (a - b))
+    _ -> error ("prim_int_sub: invalid args: " <> show args)
+  "prim_int_mul" -> case args of
+    [VLit (LInt64 a), VLit (LInt64 b)] -> pure $ VLit (LInt64 (a * b))
+    _ -> error ("prim_int_mul: invalid args: " <> show args)
+  "prim_int_print" -> case args of
+    [val@(VLit (LInt64 a))] -> val <$ print a
+    _ -> error ("prim_int_print: invalid args: " <> show args)
   other -> error ("non-existing external: " <> show other)
 
 
