@@ -65,7 +65,8 @@ fact =
     , Def "main" [] $
         EBind (SPure (Lit (LInt64 10))) (BVar "m1") $
         EBind (SApp "fact" ["m1"]) (BVar "m2") $
-        SApp "prim_int_print" ["m2"]
+        EBind (SApp "prim_int_print" ["m2"]) BUnit $
+        SPure (Var "m2")
     ]
 
 sumSimple :: Program
