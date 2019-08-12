@@ -79,15 +79,17 @@ nextLocation = gets (\(Store m) -> maximum (Map.keys m))
 eval :: Context -> Exp -> Interpreter IO Value
 eval ctx = \case
 
-  SPure n@(CNode{}) ->
+  SPure (CNode (Node tag fields)) -> do
     -- Convert a node literal value to the grin interpreter node value
-    literal n
-  SPure l@(Lit{}) ->
+    -- Not sure if it's correct to resolve the values here
+    fieldValues <- for fields (asks . flip lookupEnv)
+    pure $ VNode (NodeValue tag fieldValues)
+  SPure (Lit l) ->
     -- Convert a simple literal value to the grin interpreter literal value
-    literal l
-  SPure u@Unit ->
+    pure (VLit l)
+  SPure Unit ->
     -- Convert a unit literal value to the grin interpreter value
-    literal u
+    pure VUnit
   SPure (Var n) ->
     -- Lookup a variable in the environment and return its value
     asks (flip lookupEnv n)
@@ -211,10 +213,6 @@ eval ctx = \case
 
   overGenerative ->
     error $ show overGenerative
-
--- The Val and Val should be separated as Literal and Value for the interpreter
-literal :: Val -> Interpreter IO Value
-literal _ = todo
 
 grinMain :: Program -> Exp
 grinMain = \case
