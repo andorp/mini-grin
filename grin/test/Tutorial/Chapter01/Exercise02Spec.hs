@@ -16,16 +16,16 @@ spec = do
     it "works for add" $ do
       let ctx = externalCalls
       res <- interpret ctx $ convertGExpToExp Examples.add
-      res `shouldBe` (Lit $ LInt64 30)
+      res `shouldBe` (VLit $ LInt64 30)
 
     it "works for fact" $ do
       let ctx = externalCalls
       res <- interpret ctx $ convertGExpToExp Examples.fact
-      res `shouldBe` (Lit $ LInt64 3628800)
+      res `shouldBe` (VLit $ LInt64 3628800)
 
     it "works for sumSimple" $ do
       let ctx = externalCalls
       res <- interpret ctx $ convertGExpToExp Examples.sumSimple
-      res `shouldBe` Unit
+      res `shouldBe` VUnit
 
 -- * Test data

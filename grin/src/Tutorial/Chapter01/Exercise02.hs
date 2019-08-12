@@ -8,52 +8,62 @@ import Grin.Interpreter.Env
 import Grin.Interpreter.Store
 import Control.Monad.Reader
 import Control.Monad.State
-import Control.Monad.Fail
-import Control.Monad.Trans.RWS.Strict hiding (MonadReader(..), MonadState(..))
+import Control.Monad.Trans.RWS.Strict (RWST(..))
 import qualified Data.Map.Strict as Map
 
 
 data Context = Context
-  { externalCall :: External -> [Val] -> IO Val
-  , funcions     :: Map.Map Name Exp
+  { externalCall :: External -> [Value] -> IO Value
+  , functions    :: Map.Map Name Exp
   }
 
 -- TODO: Rename this to address
 newtype Heap = Heap Int
-newtype Interpreter m a = Interpreter (RWST (Env Val) () (Store Int Node) m a)
+newtype Interpreter m a = Interpreter (RWST (Env Value) () (Store Int NodeValue) m a)
   deriving  ( Functor
             , Applicative
             , Monad
-            , MonadReader (Env Val)
-            , MonadState (Store Int Node)
-            , MonadFail
+            , MonadReader (Env Value)
+            , MonadState (Store Int NodeValue)
             )
 
 runInterpreter
   :: (Monad m, MonadIO m)
-  => Interpreter m a -> m (a, Store Int Node)
+  => Interpreter m a -> m (a, Store Int NodeValue)
 runInterpreter (Interpreter r) = do
   (a,store,()) <- runRWST r emptyEnv emptyStore
   pure (a,store)
 
-type InterpretExternal = External -> [Val] -> IO Val
+type InterpretExternal = External -> [Value] -> IO Value
 
 -- Implement the external calls for the externals used in the Examples
-externalCalls :: External -> [Val] -> IO Val
+externalCalls :: External -> [Value] -> IO Value
 externalCalls = undefined
 
--- TODO: Inline this function
+interpret :: InterpretExternal -> Program -> IO Value
+interpret ietx prog =
+  fst <$> runInterpreter (eval (Context ietx (programToDefs prog)) (grinMain prog))
+
 todo :: Interpreter m a
 todo = error "TODO"
 
--- TODO: Write the value for the Interpreter, seperate literals, and grin Values
-data Value = Value
+data NodeValue = NodeValue
+  { nodeTag :: Tag
+  , nodeFields :: [Value]
+  }
+  deriving (Eq, Show)
 
-interpret :: InterpretExternal -> Program -> IO Val
-interpret ietx prog = fmap fst $ runInterpreter $ eval (Context ietx (programToDefs prog)) (grinMain prog)
+data Value
+  = VLoc Int
+  | VNode NodeValue
+  | VUnit
+  | VLit Lit
+  | VVar Name
+  deriving (Eq, Show)
+
 
 -- Write a function that interprets the given expression. The function gets the body of the main.
-eval :: Context -> Exp -> Interpreter IO Val
+eval :: Context -> Exp -> Interpreter IO Value
 eval ctx = \case
 
   SPure n@(CNode{}) -> literal n -- Convert a node literal value to the grin interpreter node value
@@ -87,8 +97,8 @@ eval ctx = \case
   overGenerative -> error $ show overGenerative
 
 -- The Val and Val should be separated as Literal and Value for the interpreter
-literal :: Val -> Interpreter IO Val
-literal _ = todo -- Turn the literal
+literal :: Val -> Interpreter IO Value
+literal _ = todo
 
 grinMain :: Program -> Exp
 grinMain = \case
