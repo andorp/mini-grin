@@ -71,7 +71,7 @@ data Value
   deriving (Eq, Show)
 
 nextLocation :: Monad m => Interpreter m Int
-nextLocation = gets (\(Store m) -> maximum (Map.keys m))
+nextLocation = gets (\(Store m) -> 1 + maximum (0 : Map.keys m))
 
 -- NOTE: why are we passing the context manually?)
 
