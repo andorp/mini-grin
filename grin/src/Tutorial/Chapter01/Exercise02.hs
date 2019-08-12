@@ -203,22 +203,18 @@ matchNode (NodeValue tag fields) (patTag, patFields)
   | length fields /= length patFields
   = error "matchNode: number of fields does not match"
   | otherwise
-  = Just (error "TODO: matchNode")
+  = Just (zip patFields fields)
 
 matchValue :: Value -> CPat -> Maybe [(Name, Value)]
 matchValue val pat = case (val, pat) of
-
   (_, DefaultPat) ->
     Just []
-
   (VLit lit, LitPat litPat) ->
     if lit == litPat
       then Just []
       else Nothing
-
   (VNode nodeValue, NodePat patTag patFields) ->
     matchNode nodeValue (patTag, patFields)
-
   _other ->
     Nothing
 
