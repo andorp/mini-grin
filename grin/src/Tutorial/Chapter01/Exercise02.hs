@@ -42,7 +42,10 @@ externalCalls :: External -> [Value] -> IO Value
 externalCalls ext args = case eName ext of
   "prim_int_eq" -> case args of
     [VLit (LInt64 a), VLit (LInt64 b)] -> pure $ VLit (LBool (a == b))
-    _ -> error ("prim_int_add: invalid args: " <> show args)
+    _ -> error ("prim_int_eq: invalid args: " <> show args)
+  "prim_int_gt" -> case args of
+    [VLit (LInt64 a), VLit (LInt64 b)] -> pure $ VLit (LBool (a > b))
+    _ -> error ("prim_int_gt: invalid args: " <> show args)
   "prim_int_add" -> case args of
     [VLit (LInt64 a), VLit (LInt64 b)] -> pure $ VLit (LInt64 (a + b))
     _ -> error ("prim_int_add: invalid args: " <> show args)
