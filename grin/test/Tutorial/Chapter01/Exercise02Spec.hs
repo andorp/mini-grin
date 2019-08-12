@@ -21,7 +21,7 @@ spec = do
     it "works for fact" $ do
       let ctx = externalCalls
       res <- interpret ctx $ convertGExpToExp Examples.fact
-      res `shouldBe` (Lit $ LInt64 120)
+      res `shouldBe` (Lit $ LInt64 3628800)
 
     it "works for sumSimple" $ do
       let ctx = externalCalls
