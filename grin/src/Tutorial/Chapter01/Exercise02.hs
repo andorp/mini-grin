@@ -96,11 +96,11 @@ eval ctx = \case
 
   SStore v -> do
     -- Create a memory location on the heap and store the value which the variable v has.
-    n@NodeValue{} <- asks (flip lookupEnv v) >>= \case
+    node <- asks (flip lookupEnv v) >>= \case
       VNode n -> pure n
       other -> error ("value should have been a Node: " <> show other)
     loc <- nextLocation
-    modify (storeExt loc n)
+    modify (storeExt loc node)
     pure (VLoc loc)
 
   SFetch h -> do
@@ -121,25 +121,27 @@ eval ctx = \case
       VNode node -> pure node
       other -> error ("value should have been a Node: " <> show other)
     modify (storeExt loc node)
-    pure (VUnit)
+    pure VUnit
 
   EBind lhs (BVar x) rhs -> do
     -- Evaluate the left hand side, bind its value to the variable x
     -- extending the environment, then evaluate the right hand side
     val <- eval ctx lhs
     local (flip extendEnv [(x, val)]) (eval ctx rhs)
+
   EBind lhs (BNodePat t xs) rhs -> do
     -- Evaluate the left hand side, bind its value to the pattern
     -- if the node value match the given pattern, otherwise the behaviour
     -- is undefined.
-    eval ctx lhs >>= \val ->
-      case match val t xs rhs of
-        Nothing -> error ("eval ECase: failed pattern match: " <> show val)
-        Just cont -> cont
-
-    where
-      match :: Value -> Tag -> [Name] -> Exp -> Maybe (Interpreter IO Value)
-      match val tag fields rhs = Just (error "TODO: EBind/match")
+    eval ctx lhs >>= \case
+      VNode nodeValue ->
+        case matchNode nodeValue (t, xs) of
+          Just bindings ->
+            local (flip extendEnv bindings) (eval ctx rhs)
+          Nothing ->
+            error ("eval ECase: failed pattern match: " <> show (nodeValue, t, xs))
+      other ->
+        error ("eval ECase: failed pattern match: " <> show (other, t, xs))
 
   EBind lhs BUnit rhs -> do
     -- Evaluate the left hand side, ignore the value,
@@ -152,10 +154,10 @@ eval ctx = \case
     -- to the value, similar how the pattern matching happened in the EBind,
     -- use your intuition.
     asks (flip lookupEnv x) >>= \val ->
-      case findFirst (match val . asAlt) alts of
+      case findFirst (traverse (matchValue val) . asAlt) alts of
         Nothing ->
           error ("eval ECase: failed pattern match: " <> show val)
-        Just (bindings, cont) ->
+        Just (cont, bindings) ->
           local (flip extendEnv bindings) (eval ctx cont)
 
     where
@@ -164,28 +166,8 @@ eval ctx = \case
         [] -> Nothing
         (y:_) -> Just y
 
-      asAlt (Alt pat rhs) = (pat, rhs)
+      asAlt (Alt pat cont) = (cont, pat)
       asAlt other = error ("eval ECase: case alternative is not an Alt: " <> show other)
-
-      -- TODO: cont is not really used here
-      match :: Value -> (CPat, Exp) -> Maybe ([(Name, Value)], Exp)
-      match val (pat, cont) = case (val, pat) of
-
-        (_, DefaultPat) ->
-          Just ([], cont)
-
-        (VLit lit, LitPat litPat) ->
-          if lit == litPat
-            then Just ([], cont)
-            else Nothing
-
-        (VNode (NodeValue tag fields), NodePat patTag patFields) ->
-          if tag == patTag && length fields == length patFields
-            then Just (error "there's a problem")
-            else Nothing
-
-        _other ->
-          Nothing
 
   Alt _apat body -> do
     -- Ignore the pattern in the Alt and evaluate the body
@@ -196,7 +178,7 @@ eval ctx = \case
     -- bind the values to the function parameters, or pass them to the
     -- interpreter of the externals
     case Map.lookup fn (functions ctx) of
-      Just (Def functionName argNames body) -> do
+      Just (Def _functionName argNames body) -> do
         params <- for (zip argNames ps) $ \(argName, p) -> do
           val <- asks (flip lookupEnv p)
           pure (argName, val)
@@ -213,6 +195,32 @@ eval ctx = \case
 
   overGenerative ->
     error $ show overGenerative
+
+matchNode :: NodeValue -> (Tag, [Name]) -> Maybe [(Name, Value)]
+matchNode (NodeValue tag fields) (patTag, patFields)
+  | tag /= patTag
+  = Nothing
+  | length fields /= length patFields
+  = error "matchNode: number of fields does not match"
+  | otherwise
+  = Just (error "TODO: matchNode")
+
+matchValue :: Value -> CPat -> Maybe [(Name, Value)]
+matchValue val pat = case (val, pat) of
+
+  (_, DefaultPat) ->
+    Just []
+
+  (VLit lit, LitPat litPat) ->
+    if lit == litPat
+      then Just []
+      else Nothing
+
+  (VNode nodeValue, NodePat patTag patFields) ->
+    matchNode nodeValue (patTag, patFields)
+
+  _other ->
+    Nothing
 
 grinMain :: Program -> Exp
 grinMain = \case
