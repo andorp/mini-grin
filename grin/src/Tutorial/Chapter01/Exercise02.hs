@@ -38,9 +38,6 @@ type InterpretExternal = External -> [Value] -> IO Value
 
 -- Implement the external calls for the externals used in the Examples
 externalCalls :: External -> [Value] -> IO Value
-<<<<<<< HEAD
-externalCalls = undefined
-=======
 externalCalls ext args = case eName ext of
   "prim_int_eq" -> case args of
     [VLit (LInt64 a), VLit (LInt64 b)] -> pure $ VLit (LBool (a == b))
@@ -58,11 +55,9 @@ externalCalls ext args = case eName ext of
     [VLit (LInt64 a), VLit (LInt64 b)] -> pure $ VLit (LInt64 (a * b))
     _ -> error ("prim_int_mul: invalid args: " <> show args)
   "prim_int_print" -> case args of
-    [val@(VLit (LInt64 a))] -> val <$ print a
+    [val@(VLit (LInt64 a))] -> VUnit <$ print a
     _ -> error ("prim_int_print: invalid args: " <> show args)
   other -> error ("non-existing external: " <> show other)
-
->>>>>>> 2e0c2b1... add more primops
 
 interpret :: InterpretExternal -> Program -> IO Value
 interpret ietx prog =
