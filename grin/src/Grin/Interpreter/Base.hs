@@ -14,7 +14,6 @@ import Grin.Exp
 import Grin.Interpreter.Env
 import Grin.Interpreter.Store
 import Grin.Value hiding (Val)
-import TutorialMode
 
 import qualified Data.Map.Strict as Map
 import qualified Grin.Value as Grin
