@@ -8,7 +8,8 @@ import Grin.Interpreter.Env
 import Grin.Interpreter.Store
 import Control.Monad.Reader
 import Control.Monad.State
-import Control.Monad.Trans.RWS.Strict
+import Control.Monad.Fail
+import Control.Monad.Trans.RWS.Strict hiding (MonadReader(..), MonadState(..))
 import qualified Data.Map.Strict as Map
 
 
@@ -17,6 +18,7 @@ data Context = Context
   , funcions     :: Map.Map Name Exp
   }
 
+-- TODO: Rename this to address
 newtype Heap = Heap Int
 newtype Interpreter m a = Interpreter (RWST (Env Val) () (Store Int Node) m a)
   deriving  ( Functor
@@ -24,6 +26,7 @@ newtype Interpreter m a = Interpreter (RWST (Env Val) () (Store Int Node) m a)
             , Monad
             , MonadReader (Env Val)
             , MonadState (Store Int Node)
+            , MonadFail
             )
 
 runInterpreter
@@ -39,9 +42,12 @@ type InterpretExternal = External -> [Val] -> IO Val
 externalCalls :: External -> [Val] -> IO Val
 externalCalls = undefined
 
+-- TODO: Inline this function
 todo :: Interpreter m a
 todo = error "TODO"
 
+-- TODO: Write the value for the Interpreter, seperate literals, and grin Values
+data Value = Value
 
 interpret :: InterpretExternal -> Program -> IO Val
 interpret ietx prog = fmap fst $ runInterpreter $ eval (Context ietx (programToDefs prog)) (grinMain prog)

@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, GeneralizedNewtypeDeriving, InstanceSigs, TypeFamilies, TemplateHaskell, ScopedTypeVariables #-}
+{-# LANGUAGE LambdaCase, GeneralizedNewtypeDeriving, InstanceSigs, TypeFamilies, TemplateHaskell, ScopedTypeVariables, DataKinds #-}
 module Grin.Interpreter.Base
   ( module Grin.Interpreter.Env
   , module Grin.Interpreter.Store
@@ -14,6 +14,7 @@ import Grin.Exp
 import Grin.Interpreter.Env
 import Grin.Interpreter.Store
 import Grin.Value hiding (Val)
+import TutorialMode
 
 import qualified Data.Map.Strict as Map
 import qualified Grin.Value as Grin
@@ -36,7 +37,7 @@ ev ev0 = \case
     pure $ lookupEnv p n
 
   SApp fn ps -> do
-    p <- askEnv
+    p  <- askEnv
     vs <- pure $ map (lookupEnv p) ps
     op <- isOperation fn
     (if op then operation else funCall ev0) fn vs
