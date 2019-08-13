@@ -107,6 +107,14 @@ instance (Applicative m, Monad m, MonadFail m) => Interpreter (DefinitionalT m) 
   addr2val :: Loc -> DefinitionalT m DVal
   addr2val = pure . DVal . SLoc
 
+  heapVal2val :: Node -> DefinitionalT m DVal
+  heapVal2val = pure . DNode
+
+  val2heapVal :: DVal -> DefinitionalT m Node
+  val2heapVal = \case
+    DNode n -> pure n
+    other   -> error $ "val2heapVal: " ++ show other
+
   name2NewStoreInfo :: Name -> DefinitionalT m HeapCtx
   name2NewStoreInfo _ = pure HeapCtx
 
