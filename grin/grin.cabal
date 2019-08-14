@@ -33,6 +33,7 @@ library
 --    Transformations.Optimising.SparseCaseOptimisation
     Tutorial.Chapter01.Exercise01
     Tutorial.Chapter01.Exercise02
+--    Tutorial.Chapter02.Exercise01
 
   build-depends:
     base >=4.11,
