@@ -14,7 +14,7 @@ import Text.Printf
 import Grin.Pretty hiding (SChar)
 
 
-data Name = NM { unNM :: !Text }
+data Name = NM { getName :: !Text }
   deriving (Generic, Data, Eq, Ord)
 
 instance Show Name where
@@ -26,7 +26,7 @@ nMap f (NM n) = NM (f n)
 instance Semigroup  Name where (NM n1) <> (NM n2) = NM (n1 <> n2)
 instance Monoid     Name where mempty = NM mempty
 instance IsString   Name where fromString = NM . fromString
-instance PrintfArg  Name where formatArg = formatString . Data.Text.unpack . unNM
+instance PrintfArg  Name where formatArg = formatString . Data.Text.unpack . getName
 
 nameString :: Name -> String
 nameString (NM n) = Data.Text.unpack n
@@ -46,7 +46,7 @@ data SimpleValue
   | SWord64 Word64
   | SFloat  Float
   | SBool   Bool
-  | SString Text
+  | SString String
   | SChar   Char
   deriving (Generic, Data, Eq, Ord, Show)
 

@@ -10,7 +10,6 @@ import Control.Monad.Trans.Reader hiding (ask, local)
 import Control.Monad.Trans.State hiding (state, get)
 import Data.Int
 import Data.Maybe (fromJust, fromMaybe, isNothing)
-import Data.Text (Text)
 import Data.Word
 import Grin.Exp
 import Grin.Interpreter.Base
@@ -29,7 +28,7 @@ data SVal
   | SWord64 Word64
   | SFloat  Float
   | SBool   Bool
-  | SString Text
+  | SString String
   | SChar   Char
   | SLoc    Loc
   deriving (Eq, Ord, Show)

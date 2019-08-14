@@ -30,7 +30,7 @@ spec = do
 add :: Program
 add =
   Program
-    [ External "prim_int_add" (TySimple T_Int64) [TySimple T_Int64, TySimple T_Int64] False PrimOp
+    [ External "prim_int_add" (TySimple T_Int64) [TySimple T_Int64, TySimple T_Int64]
     ]
     [ Def "add" ["s1", "s2"] $
         EBind (SApp "prim_int_add" ["s1", "s2"]) (BVar "s3") $
@@ -44,10 +44,10 @@ add =
 fact :: Program
 fact =
   Program
-    [ External "prim_int_sub"   (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64] False PrimOp
-    , External "prim_int_mul"   (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64] False PrimOp
-    , External "prim_int_eq"    (TySimple T_Bool)   [TySimple T_Int64, TySimple T_Int64] False PrimOp
-    , External "prim_int_print" (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64] True  PrimOp
+    [ External "prim_int_sub"   (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64]
+    , External "prim_int_mul"   (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64]
+    , External "prim_int_eq"    (TySimple T_Bool)   [TySimple T_Int64, TySimple T_Int64]
+    , External "prim_int_print" (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64]
     ]
     [ Def "fact" ["f1"] $
         EBind (SPure (Lit (LVal (SInt64 0)))) (BVar "f2") $
@@ -72,11 +72,11 @@ fact =
 sumSimple :: Program
 sumSimple =
   Program
-    [ External "prim_int_add"   (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64] False PrimOp
-    , External "prim_int_sub"   (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64] False PrimOp
-    , External "prim_int_eq"    (TySimple T_Bool)   [TySimple T_Int64, TySimple T_Int64] False PrimOp
-    , External "prim_int_gt"    (TySimple T_Bool)   [TySimple T_Int64, TySimple T_Int64] False PrimOp
-    , External "prim_int_print" (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64] True  PrimOp
+    [ External "prim_int_add"   (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64]
+    , External "prim_int_sub"   (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64]
+    , External "prim_int_eq"    (TySimple T_Bool)   [TySimple T_Int64, TySimple T_Int64]
+    , External "prim_int_gt"    (TySimple T_Bool)   [TySimple T_Int64, TySimple T_Int64]
+    , External "prim_int_print" (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64]
     ]
     [ Def "main" [] $
         EBind (SPure (Lit (LVal (SInt64 1)))) (BVar "m1") $

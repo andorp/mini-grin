@@ -8,53 +8,11 @@ module Grin.Exp
 
 import Data.Functor.Foldable
 import Data.Functor.Foldable.TH
-import Data.List (groupBy)
-import Data.Text (Text)
 import Grin.Pretty
 import Grin.TypeEnv
 import Grin.Value
-import Lens.Micro.Platform
 import Prelude hiding (exp)
 
--- TODO: Comment on what is the noise in this module
--- TODO: Move the Exp definition to the top
-
--- * GRIN Externals, i.e. primops and foreign function
-data ExternalKind
-  = PrimOp -- ^ Implemented in the internal code generator
-  | FFI    -- ^ Implemented in C and linked during the linker phase
-  deriving (Eq, Ord, Show)
-
-data External
-  = External
-  { eName       :: Name
-  , eRetType    :: Ty
-  , eArgsType   :: [Ty]
-  , eEffectful  :: Bool
-  , eKind       :: ExternalKind
-  }
-  deriving (Eq, Ord, Show)
-
-isExternalName :: [External] -> Name -> Bool
-isExternalName es n = n `Prelude.elem` (eName <$> es)
-
-
-
--- * Case Pattern
-
-data CPat
-  = NodePat Tag [Name]
-  | LitPat  SimpleValue
-  | DefaultPat
-  deriving (Eq, Show, Ord)
-
--- * Bind Pattern
-
-data BPat
-  = BNodePat Tag [Name]
-  | BVar     Name
-  | BUnit
-  deriving (Eq, Show, Ord)
 
 -- * GRIN Expression
 
@@ -79,6 +37,36 @@ data Exp
   | Alt CPat Exp
   deriving (Eq, Ord, Show)
 
+
+data External
+  = External
+  { eName       :: Name
+  , eRetType    :: Ty
+  , eArgsType   :: [Ty]
+  }
+  deriving (Eq, Ord, Show)
+
+isExternalName :: [External] -> Name -> Bool
+isExternalName es n = n `Prelude.elem` (eName <$> es)
+
+
+
+-- * Case Pattern
+
+data CPat
+  = NodePat Tag [Name]
+  | LitPat  SimpleValue
+  | DefaultPat
+  deriving (Eq, Show, Ord)
+
+-- * Bind Pattern
+
+data BPat
+  = BNodePat Tag [Name]
+  | BVar     Name
+  | BUnit
+  deriving (Eq, Show, Ord)
+
 externals :: Exp -> [External]
 externals = \case
   Program es _ -> es
@@ -93,36 +81,7 @@ deriving instance Show a  => Show (ExpF a)
 deriving instance Eq a    => Eq   (ExpF a)
 deriving instance Ord a   => Ord  (ExpF a)
 
-{-
--- * Traversals
 
-_AltCPat :: Traversal' Exp CPat
-_AltCPat f (Alt p e) = (`Alt` e) <$> f p
-_AltCPat _ other     = pure other
-
-_AltFCPat :: Traversal' (ExpF a) CPat
-_AltFCPat f (AltF p e) = (`AltF` e) <$> f p
-_AltFCPat _ other      = pure other
-
-_CPatNodeTag :: Traversal' CPat Tag
-_CPatNodeTag f (NodePat tag args) = (`NodePat` args) <$> f tag
-_CPatNodeTag _ other              = pure other
-
-_CPatLit :: Traversal' CPat Lit
-_CPatLit f (LitPat lit) = LitPat <$> f lit
-_CPatLit _ other        = pure other
-
-_CPatDefault :: Traversal' CPat ()
-_CPatDefault f DefaultPat = const DefaultPat <$> f ()
-_CPatDefault _ other      = pure other
-
-_ValVar :: Traversal' Val Name
-_ValVar f (Var name) = Var <$> f name
-_ValVar _ other      = pure other
-
-_NM :: Traversal' Name Text
-_NM f (NM n) = NM <$> f n
--}
 
 -- * Pretty
 
@@ -142,10 +101,8 @@ instance Pretty BPat where
     BUnit             -> parens Grin.Pretty.empty
 
 prettyExternals :: [External] -> Doc
-prettyExternals exts = vcat (fmap prettyExtGroup $ groupBy (\a b -> eEffectful a == eEffectful b && eKind a == eKind b) exts) where
-  prettyExtGroup [] = mempty
-  prettyExtGroup l@(a : _) = keyword "primop" <+> (if eEffectful a then keyword "effectful" else keyword "pure") <$$> indent 2
-    (vsep [prettyFunction (eName, (eRetType, eArgsType)) | External{..} <- l] <> line)
+prettyExternals exts = vcat (map prettyExt exts) where
+  prettyExt External{..} = prettyFunction (eName, (eRetType, eArgsType))
 
 instance Pretty Ty where
   pretty = \case

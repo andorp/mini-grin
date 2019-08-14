@@ -18,6 +18,9 @@ storeFind (Store m) a = fromMaybe (error "Store; missing") $ Map.lookup a m
 storeExt :: (Ord a) => a -> v -> Store a v -> Store a v
 storeExt a v (Store m) = Store (Map.insert a v m)
 
+storeSize :: Store a v -> Int
+storeSize (Store m) = Map.size m
+
 instance (Ord a, Semigroup v) => Semigroup (Store a v) where
   (Store ma) <> (Store mb) = Store (Map.unionWith (<>) ma mb)
 

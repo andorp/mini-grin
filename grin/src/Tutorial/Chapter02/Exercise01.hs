@@ -24,9 +24,7 @@ Change the types in the Interpreter to make compile eval interpreter.
 ev  :: (MonadIO m, Interpreter m, a ~ Addr m, v ~ Val m, Show v)
     => (Exp -> m (Val m)) -> Exp -> m (Val m)
 ev ev0 = \case
-  SPure n@(CNode{}) -> value n
-  SPure l@(Lit{})   -> value l
-  SPure u@Unit      -> value u
+  SPure (Lit l) -> literal l
   SPure (Var n) -> do
     p <- askEnv
     pure $ lookupEnv p n
@@ -99,7 +97,7 @@ class (Monad m, MonadFail m) => Interpreter m where
                            --   to distinguis between different stores.
 
   -- Conversions, but m type is needed for type inference
-  value       :: Todo m -- ^ Convert a literal value to an value of the interpretation
+  literal     :: Todo m -- ^ Convert a literal value to an value of the interpretation
   val2addr    :: Todo m -- ^ Extract the location information from a value, hint :: Val -> Addr
   addr2val    :: Todo m -- ^ Wrap a location information inside a value
   heapVal2val :: Todo m -- ^ Convert a value that is stored in the heap to a value that
