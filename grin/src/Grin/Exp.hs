@@ -44,7 +44,7 @@ isExternalName es n = n `Prelude.elem` (eName <$> es)
 
 data CPat
   = NodePat Tag [Name]
-  | LitPat  Lit
+  | LitPat  SimpleValue
   | DefaultPat
   deriving (Eq, Show, Ord)
 
@@ -58,21 +58,20 @@ data BPat
 
 -- * GRIN Expression
 
--- TODO:
-type SimpleExp = Exp
-type Alt = Exp
-type Def = Exp
-type Program = Exp
+type SimpleExp  = Exp -- Meant to be SApp, SPure, SStore, SFetch, SUpdate constructors
+type Alt        = Exp -- Meant to be the Alt constructor
+type Def        = Exp -- Meant to be the Def constructor
+type Program    = Exp -- Meant to be the Program constructor
 
 data Exp
   = Program     [External] [Def]
   | Def         Name [Name] Exp
   -- Exp
-  | EBind       SimpleExp BPat Exp
+  | EBind       Exp BPat Exp
   | ECase       Name [Alt]
   -- Simple Exp
   | SApp        Name [Name]
-  | SPure       Val
+  | SPure       VarOrLit
   | SStore      Name -- Variable should hold only nodes
   | SFetch      Name -- Variable should hold only locations
   | SUpdate     Name Name -- The variables in order should hold only location and node
@@ -94,6 +93,7 @@ deriving instance Show a  => Show (ExpF a)
 deriving instance Eq a    => Eq   (ExpF a)
 deriving instance Ord a   => Ord  (ExpF a)
 
+{-
 -- * Traversals
 
 _AltCPat :: Traversal' Exp CPat
@@ -122,6 +122,7 @@ _ValVar _ other      = pure other
 
 _NM :: Traversal' Name Text
 _NM f (NM n) = NM <$> f n
+-}
 
 -- * Pretty
 

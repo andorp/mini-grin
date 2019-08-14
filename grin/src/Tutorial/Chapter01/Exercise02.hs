@@ -2,6 +2,8 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, LambdaCase #-}
 module Tutorial.Chapter01.Exercise02 where
 
+import Data.Int
+import Data.Word
 import Data.Maybe
 import Grin.Exp
 import Grin.Interpreter.Env
@@ -42,16 +44,21 @@ interpret :: InterpretExternal -> Program -> IO Value
 interpret ietx prog =
   fst <$> runInterpreter (eval (Context ietx (programToDefs prog)) (grinMain prog))
 
-data PValue
-  = Loc Address
-  | PV  Grin.Lit
-  deriving (Eq, Show)
+data SValue
+  = SInt64  Int64
+  | SWord64 Word64
+  | SFloat  Float
+  | SBool   Bool
+  | SString String
+  | SChar   Char
+  | SLoc    Address
+  deriving (Eq, Ord, Show)
 
-data Node = N { tag :: Grin.Tag, fields :: [PValue] }
+data Node = N { tag :: Grin.Tag, fields :: [SValue] }
   deriving (Eq, Show)
 
 data Value       -- A runtime value can be:
-  = Prim PValue  -- A primitive value
+  = Prim SValue  -- A primitive value aks simple value
   | Node Node    -- A node value which represent a node in the graph
   | Unit         -- The UNIT value, which represents no information at all. Like () in Haskell.
   deriving (Eq, Show)
@@ -61,14 +68,8 @@ data Value       -- A runtime value can be:
 eval :: Context -> Exp -> Interpreter IO Value
 eval ctx = \case
 
-  -- Convert a node literal value to the grin interpreter node value
-  SPure n@(Grin.CNode{}) -> literal n
-
-  -- Convert a simple literal value to the grin interpreter simple value
-  SPure l@(Grin.Lit{}) -> literal l
-
-  -- Convert a unit literal value to the grin interpreter value
-  SPure u@Grin.Unit -> literal u
+  -- Convert a node literal value to the grin interpreter value
+  SPure (Grin.Lit l) -> literal l
 
   -- Lookup a variable in the environment and return its value
   SPure (Grin.Var n) -> error "TODO"
@@ -113,7 +114,7 @@ eval ctx = \case
   overGenerative -> error $ show overGenerative
 
 -- The Val and Val should be separated as Literal and Value for the interpreter
-literal :: Grin.Val -> Interpreter IO Value
+literal :: Grin.Literal -> Interpreter IO Value
 literal _ = error "TODO"
 
 grinMain :: Program -> Exp
@@ -130,10 +131,10 @@ programToDefs = \case
 
 externalCalls :: External -> [Value] -> IO Value
 externalCalls ext args = case (eName ext, args) of
-  ("prim_int_eq",  [Prim (PV (Grin.LInt64 a)), Prim (PV (Grin.LInt64 b))]) -> pure $ Prim (PV (Grin.LBool (a == b)))
-  ("prim_int_gt",  [Prim (PV (Grin.LInt64 a)), Prim (PV (Grin.LInt64 b))]) -> pure $ Prim (PV (Grin.LBool (a > b)))
-  ("prim_int_add", [Prim (PV (Grin.LInt64 a)), Prim (PV (Grin.LInt64 b))]) -> pure $ Prim (PV (Grin.LInt64 (a + b)))
-  ("prim_int_sub", [Prim (PV (Grin.LInt64 a)), Prim (PV (Grin.LInt64 b))]) -> pure $ Prim (PV (Grin.LInt64 (a - b)))
-  ("prim_int_mul", [Prim (PV (Grin.LInt64 a)), Prim (PV (Grin.LInt64 b))]) -> pure $ Prim (PV (Grin.LInt64 (a * b)))
-  ("prim_int_print", [val@(Prim (PV (Grin.LInt64 a)))]) -> Unit <$ print a
+  ("prim_int_eq",  [Prim (SInt64 a), Prim (SInt64 b)]) -> pure $ Prim (SBool (a == b))
+  ("prim_int_gt",  [Prim (SInt64 a), Prim (SInt64 b)]) -> pure $ Prim (SBool (a > b))
+  ("prim_int_add", [Prim (SInt64 a), Prim (SInt64 b)]) -> pure $ Prim (SInt64 (a + b))
+  ("prim_int_sub", [Prim (SInt64 a), Prim (SInt64 b)]) -> pure $ Prim (SInt64 (a - b))
+  ("prim_int_mul", [Prim (SInt64 a), Prim (SInt64 b)]) -> pure $ Prim (SInt64 (a * b))
+  ("prim_int_print", [val@(Prim (SInt64 a))]) -> Unit <$ print a
   other -> error ("non-existing external, or bad args " <> show other)

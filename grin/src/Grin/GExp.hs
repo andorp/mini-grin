@@ -33,7 +33,7 @@ data Exp (ctx :: ExpCtx) where
     -> [Name]  -- ^ arguments
     -> Exp 'SECtx
   SPure
-    :: Val
+    :: VarOrLit
     -> Exp 'SECtx
   SStore
     :: Name

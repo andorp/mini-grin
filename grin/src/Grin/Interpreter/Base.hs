@@ -28,9 +28,7 @@ eval = fix ev
 ev  :: (MonadIO m, Interpreter m, a ~ Addr m, v ~ Val m, Show v)
     => (Exp -> m (Val m)) -> Exp -> m (Val m)
 ev ev0 = \case
-  SPure n@(CNode{}) -> value n
-  SPure l@(Lit{})   -> value l
-  SPure u@Unit      -> value u
+  SPure (Lit l) -> literal l
   SPure (Var n) -> do
     p <- askEnv
     pure $ lookupEnv p n
@@ -100,11 +98,11 @@ class (Monad m, MonadFail m) => Interpreter m where
                            --   to distinguis between different path of the interpretation.
 
   -- Conversions, but m type is needed for type inference
-  value       :: Grin.Val   -> m (Val m)  -- Value of the given literal
-  val2addr    :: Val m      -> m (Addr m) --
-  addr2val    :: Addr m     -> m (Val m)
-  heapVal2val :: HeapVal m  -> m (Val m)
-  val2heapVal :: Val m      -> m (HeapVal m)
+  literal     :: Grin.Literal -> m (Val m)  -- Value of the given literal
+  val2addr    :: Val m        -> m (Addr m) --
+  addr2val    :: Addr m       -> m (Val m)
+  heapVal2val :: HeapVal m    -> m (Val m)
+  val2heapVal :: Val m        -> m (HeapVal m)
   unit        :: m (Val m) -- The unit value
   bindPattern :: Val m -> (Tag, [Name]) -> m [(Name, Val m)]
 

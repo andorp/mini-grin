@@ -16,7 +16,7 @@ import Data.Maybe (fromMaybe, fromJust)
 import Data.Maybe (isNothing)
 import Grin.Exp
 import Grin.TypeEnv hiding (TypeEnv(..), Loc)
-import Grin.Value hiding (Val, Node)
+import Grin.Value (Name, Tag)
 import Grin.Interpreter.Base
 import Grin.Pretty hiding (SChar)
 import Lens.Micro.Platform
@@ -31,19 +31,19 @@ import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 
 data ST
-  = SInt64
-  | SWord64
-  | SFloat
-  | SBool
-  | SString
-  | SChar
-  | SLoc Loc
+  = ST_Int64
+  | ST_Word64
+  | ST_Float
+  | ST_Bool
+  | ST_String
+  | ST_Char
+  | ST_Loc Loc
   deriving (Eq, Ord, Show)
 
 instance Pretty ST where
   pretty = \case
-    (SLoc h) -> cyan $ pretty h
-    ty -> red $ text $ show ty
+    (ST_Loc h) -> cyan $ pretty h
+    ty         -> red $ text $ show ty
 
 data Node = Node Tag [ST]
   deriving (Eq, Ord, Show)
@@ -237,14 +237,14 @@ getCache c (Cache m) = maybe [] Set.toList $ Map.lookup c m
 insertCache :: Config -> [(T, AbsStore)] -> Cache -> Cache
 insertCache c vos (Cache m) = Cache (Map.unionWith (<>) m (Map.singleton c (Set.fromList vos)))
 
-typeOfLit :: Lit -> T
-typeOfLit = \case
-  LInt64  _ -> ST SInt64
-  LWord64 _ -> ST SWord64
-  LFloat  _ -> ST SFloat
-  LBool   _ -> ST SBool
-  LString _ -> ST SString
-  LChar   _ -> ST SChar
+typeOfSimpleValue :: Grin.SimpleValue -> T
+typeOfSimpleValue = \case
+  Grin.SInt64  _ -> ST ST_Int64
+  Grin.SWord64 _ -> ST ST_Word64
+  Grin.SFloat  _ -> ST ST_Float
+  Grin.SBool   _ -> ST ST_Bool
+  Grin.SString _ -> ST ST_String
+  Grin.SChar   _ -> ST ST_Char
 
 -- Chapter 2: Fill out the missing definitions that the 3 test pass
 instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
@@ -254,26 +254,24 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
   type Addr         (AbstractT m) = Loc
   type NewStoreInfo (AbstractT m) = Name
 
-  value :: Grin.Val -> AbstractT m T
-  value = \case
-    (CNode (Grin.Node tag ps)) -> do
+  literal :: Grin.Literal -> AbstractT m T
+  literal = \case
+    (Grin.LNode (Grin.Node tag ps)) -> do
       p  <- askEnv
       ts <- pure $ map (lookupEnv p) ps
       pure $ NT $ Node tag $ map (\case
         ST t -> t
         other -> error $ unwords ["value", show other] -- TODO: Include type error
         ) ts
-    (Lit l) -> pure $ typeOfLit l
-    Unit    -> pure $ UT
-    (Var v) -> error $ unwords ["value", nameString v]
+    (Grin.LVal l) -> pure $ typeOfSimpleValue l
 
   val2addr :: T -> AbstractT m Loc
   val2addr = \case
-    ST (SLoc l) -> pure l
-    other       -> error $ unwords ["val2addr", show other]
+    ST (ST_Loc l) -> pure l
+    other         -> error $ unwords ["val2addr", show other]
 
   addr2val :: Loc -> AbstractT m T
-  addr2val l = pure $ ST $ SLoc l
+  addr2val l = pure $ ST $ ST_Loc l
 
   val2heapVal :: T -> AbstractT m Node
   val2heapVal = \case
@@ -306,7 +304,7 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
     local (absEnv .~ env) m
 
   lookupFun :: Name -> AbstractT m Exp
-  lookupFun fn = (fromMaybe (error $ unwords ["lookupFun", nameString fn]) . Map.lookup fn . _absFun) <$> ask
+  lookupFun fn = (fromMaybe (error $ unwords ["lookupFun", Grin.nameString fn]) . Map.lookup fn . _absFun) <$> ask
 
   isOperation :: Name -> AbstractT m Bool
   isOperation n = (Map.member n . _absOps) <$> ask
@@ -314,7 +312,7 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
   operation :: Name -> [T] -> AbstractT m T
   operation n ps = do
     (r,ts) <- (fromJust . Map.lookup n . _absOps) <$> ask
-    when (ps /= ts) $ error $ unwords ["operation", nameString n, show ps, show ts]
+    when (ps /= ts) $ error $ unwords ["operation", Grin.nameString n, show ps, show ts]
     appendFunOut (n,ts,r)
     pure r
 
@@ -324,7 +322,7 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
     forMonadPlus selectedAlts extendAlt
     where
       isMatching (Alt DefaultPat      _) = pure True
-      isMatching (Alt (LitPat l)      _) = (v ==) <$> value (Lit l)
+      isMatching (Alt (LitPat l)      _) = (v ==) <$> literal (Grin.LVal l)
       isMatching (Alt (NodePat t _ps) _) = case v of
         NT (Node t0 _) -> pure $ t == t0
         _nonNodeType   -> pure False
@@ -363,7 +361,7 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
   allocStore ctx = do
     s <- getStore
     l <- nextLocStore ctx s
-    pure $ ST $ SLoc l
+    pure $ ST $ ST_Loc l
 
   findStore :: T -> AbstractT m T
   findStore v = do
@@ -438,12 +436,12 @@ evalAbstractOne prog = do
   (\(_,tc,_) -> tc) <$> runAbstractT prog ops (fixCache (fix (evalCache ev)) (grinMain prog))
   where
     exts = externals prog
-    prim_int_add    = (ST SInt64, [ST SInt64, ST SInt64])
-    prim_int_sub    = (ST SInt64, [ST SInt64, ST SInt64])
-    prim_int_mul    = (ST SInt64, [ST SInt64, ST SInt64])
-    prim_int_eq     = (ST SBool,  [ST SInt64, ST SInt64])
-    prim_int_gt     = (ST SBool,  [ST SInt64, ST SInt64])
-    prim_int_print  = (UT, [ST SInt64])
+    prim_int_add    = (ST ST_Int64, [ST ST_Int64, ST ST_Int64])
+    prim_int_sub    = (ST ST_Int64, [ST ST_Int64, ST ST_Int64])
+    prim_int_mul    = (ST ST_Int64, [ST ST_Int64, ST ST_Int64])
+    prim_int_eq     = (ST ST_Bool,  [ST ST_Int64, ST ST_Int64])
+    prim_int_gt     = (ST ST_Bool,  [ST ST_Int64, ST ST_Int64])
+    prim_int_print  = (UT, [ST ST_Int64])
 
 {-
 runAdd :: IO ()
@@ -475,13 +473,13 @@ tToType ml = \case
 
 stToSimpleType :: Map.Map Loc Int -> ST -> SimpleType
 stToSimpleType ml = \case
-  SInt64  -> T_Int64
-  SWord64 -> T_Word64
-  SFloat  -> T_Float
-  SBool   -> T_Bool
-  SString -> T_String
-  SChar   -> T_Char
-  SLoc l  -> T_Location [ml Map.! l]
+  ST_Int64  -> T_Int64
+  ST_Word64 -> T_Word64
+  ST_Float  -> T_Float
+  ST_Bool   -> T_Bool
+  ST_String -> T_String
+  ST_Char   -> T_Char
+  ST_Loc l  -> T_Location [ml Map.! l]
 
 locsToLocation :: Store Loc (Set Node) -> (Map.Map Loc Int, Map.Map Int NodeSet)
 locsToLocation (Store m0) = (locToHeap, storeToHeap m0)

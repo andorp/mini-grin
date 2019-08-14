@@ -14,12 +14,12 @@ import Data.Text (Text)
 import Data.Word
 import Grin.Exp
 import Grin.Interpreter.Base
-import Grin.Value hiding (Val, Node)
+import Grin.Value (Name, Tag)
 import Lens.Micro.Platform
 import Prelude hiding (fail)
 
 import qualified Data.Map.Strict as Map
-import qualified Grin.Value as Grin (Val, Node(..))
+import qualified Grin.Value as Grin
 
 
 -- * Definitional Interpreter
@@ -34,14 +34,14 @@ data SVal
   | SLoc    Loc
   deriving (Eq, Ord, Show)
 
-lit2sval :: Lit -> SVal
-lit2sval = \case
-  LInt64  i -> SInt64 i
-  LWord64 w -> SWord64 w
-  LFloat  f -> SFloat f
-  LBool   b -> SBool b
-  LString s -> SString s
-  LChar   c -> SChar c
+simpleValue :: Grin.SimpleValue -> SVal
+simpleValue = \case
+  Grin.SInt64  i -> SInt64 i
+  Grin.SWord64 w -> SWord64 w
+  Grin.SFloat  f -> SFloat f
+  Grin.SBool   b -> SBool b
+  Grin.SString s -> SString s
+  Grin.SChar   c -> SChar c
 
 data Node = Node Tag [SVal]
   deriving (Eq, Ord, Show)
@@ -86,18 +86,16 @@ instance (Applicative m, Monad m, MonadFail m) => Interpreter (DefinitionalT m) 
   type Addr         (DefinitionalT m) = Loc
   type NewStoreInfo (DefinitionalT m) = HeapCtx
 
-  value :: Grin.Val -> DefinitionalT m DVal
-  value = \case
-    (CNode (Grin.Node t0 ps)) -> do
+  literal :: Grin.Literal -> DefinitionalT m DVal
+  literal = \case
+    (Grin.LNode (Grin.Node t0 ps)) -> do
       p  <- askEnv
       vs <- pure $ map (lookupEnv p) ps
       pure $ DNode $ Node t0 $ map (\case
         DVal v -> v
         other -> error $ "value " ++ show other
         ) vs
-    (Lit l) -> pure $ DVal $ lit2sval l
-    Unit    -> pure $ DUnit
-    (Var v) -> error $ "value " ++ nameString v
+    (Grin.LVal sv) -> pure $ DVal $ simpleValue sv
 
   val2addr :: DVal -> DefinitionalT m Loc
   val2addr = \case
@@ -150,7 +148,7 @@ instance (Applicative m, Monad m, MonadFail m) => Interpreter (DefinitionalT m) 
       match DUnit                 p               = error $ "matching failure:" ++ show (DUnit, p)
       match (DVal (SLoc l))       p               = error $ "matching failure:" ++ show (l, p)
       match (DNode (Node t0 _p))  (NodePat t1 _v) = t0 == t1
-      match (DVal l0)             (LitPat l1)     = l0 == (lit2sval l1)
+      match (DVal l0)             (LitPat l1)     = l0 == (simpleValue l1)
       match (DNode{})             DefaultPat      = True
       match (DVal{})              DefaultPat      = True
       match _                     _               = False

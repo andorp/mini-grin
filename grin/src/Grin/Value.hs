@@ -11,7 +11,7 @@ import Data.String
 import Data.Text (Text, unpack)
 import GHC.Generics (Generic)
 import Text.Printf
-import Grin.Pretty
+import Grin.Pretty hiding (SChar)
 
 
 data Name = NM { unNM :: !Text }
@@ -39,31 +39,35 @@ data TagType = C | F | P Int {-missing parameter count-}
 data Tag = Tag { tagType :: TagType, tagName :: Name }
   deriving (Generic, Data, Eq, Ord, Show)
 
--- * GRIN Literal
-
-data Lit
-  = LInt64  Int64
-  | LWord64 Word64
-  | LFloat  Float
-  | LBool   Bool
-  | LString Text
-  | LChar   Char
-  deriving (Generic, Data, Eq, Ord, Show)
-
 -- * GRIN Value
 
-type SimpleVal = Val
+data SimpleValue
+  = SInt64  Int64
+  | SWord64 Word64
+  | SFloat  Float
+  | SBool   Bool
+  | SString Text
+  | SChar   Char
+  deriving (Generic, Data, Eq, Ord, Show)
 
 -- | Complete node
 data Node = Node Tag [Name]
   deriving (Generic, Data, Eq, Ord, Show)
 
+data VarOrLit
+  = Var Name
+  | Lit Literal
+  deriving (Generic, Data, Eq, Ord, Show)
+
+data Literal
+  = LNode Node
+  | LVal  SimpleValue
+  deriving (Generic, Data, Eq, Ord, Show)
+
 data Val
-  = CNode Node
-  | Unit -- TODO: This should not be part of the Literals
-  -- simple val
-  | Lit Lit
-  | Var Name
+  = VNode Node
+  | VPrim SimpleValue
+  | Unit
   deriving (Generic, Data, Eq, Ord, Show)
 
 instance Pretty Node where
@@ -74,20 +78,28 @@ instance Pretty Name where
 
 instance Pretty Val where
   pretty = \case
-    CNode node   -> pretty node
+    VNode node   -> pretty node
+    VPrim sval   -> pretty sval
     Unit         -> parens Grin.Pretty.empty
-    -- simple val
-    Lit lit      -> pretty lit
-    Var name     -> pretty name
 
-instance Pretty Lit where
+instance Pretty VarOrLit where
   pretty = \case
-    LInt64 a   -> integer $ fromIntegral a
-    LWord64 a  -> integer (fromIntegral a) <> text "u"
-    LFloat a   -> float a
-    LBool a    -> text "#" <> text (show a)
-    LString a  -> text "#" <> text (show a)
-    LChar a    -> text "#" <> text (show a)
+    Var v -> pretty v
+    Lit l -> pretty l
+
+instance Pretty Literal where
+  pretty = \case
+    LNode node -> pretty node
+    LVal  sval -> pretty sval
+
+instance Pretty SimpleValue where
+  pretty = \case
+    SInt64 a   -> integer $ fromIntegral a
+    SWord64 a  -> integer (fromIntegral a) <> text "u"
+    SFloat a   -> float a
+    SBool a    -> text "#" <> text (show a)
+    SString a  -> text "#" <> text (show a)
+    SChar a    -> text "#" <> text (show a)
 
 instance Pretty TagType where
   pretty = green . \case
