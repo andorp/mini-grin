@@ -2,67 +2,75 @@
 module Grin.GExp where
 
 import Data.Kind (Constraint)
-import Grin.Exp hiding (Exp(..))
+import Grin.Exp (BPat, CPat, External)
 import Grin.Value
 
 -- TODO: Explanation
 data ExpCtx
-  = SECtx   -- Simple Expressions
-  | ECtx    -- Expressions
-  | CaseCtx -- Case Expression
-  | AltCtx  -- Alternative of a case
-  | DefCtx  -- Function definitions
-  | PrgCtx  -- Program definition
+  = Simple    -- Simple Expressions
+  | Bind_     -- Expressions
+  | Case_     -- Case Expression
+  | Alt_      -- Alternative of a case
+  | Def_      -- Function definitions
+  | Prg       -- Program definition
 
--- TODO: Rename this to GExp
 -- TODO: Comment on the expressions
--- TODO: Reorganise the constructors, remove the prefixes
 -- TODO: Link GADT syntax
 data Exp (ctx :: ExpCtx) where
+
   Program
     :: [External]
-    -> [Exp 'DefCtx]  -- ^ definitions
-    -> Exp 'PrgCtx
+    -> [Exp 'Def_]  -- ^ definitions
+    -> Exp 'Prg
+
   Def
     :: Name
     -> [Name]  -- ^ arguments
-    -> Exp 'ECtx
-    -> Exp 'DefCtx
-  SApp
+    -> Exp 'Bind_
+    -> Exp 'Def_
+
+  App
     :: Name
     -> [Name]  -- ^ arguments
-    -> Exp 'SECtx
-  SPure
+    -> Exp 'Simple
+
+  Pure
     :: VarOrLit
-    -> Exp 'SECtx
-  SStore
+    -> Exp 'Simple
+
+  Store
     :: Name
-    -> Exp 'SECtx
-  SFetch
+    -> Exp 'Simple
+
+  Fetch
     :: Name
-    -> Exp 'SECtx
-  SUpdate
+    -> Exp 'Simple
+
+  Update
     :: Name  -- ^ reference to update
     -> Name  -- ^ new value
-    -> Exp 'SECtx
+    -> Exp 'Simple
+
   Alt
     :: CPat
-    -> Exp 'ECtx  -- ^ continuation
-    -> Exp 'AltCtx
-  ECase
-    :: Name  -- ^ scrutinee
-    -> [Exp 'AltCtx]  -- ^ possible cases
-    -> Exp 'CaseCtx
+    -> Exp 'Bind_  -- ^ continuation
+    -> Exp 'Alt_
+
+  Case
+    :: Name         -- ^ scrutinee
+    -> [Exp 'Alt_]  -- ^ possible alternatives of a case
+    -> Exp 'Case_
+
   -- |
   -- > Ebind lhs bpat rhs
   -- corresponds to
   -- > lhs >>= \bpat -> rhs
-  EBind
-    :: (Elem lhs ['SECtx, 'CaseCtx], Elem rhs ['SECtx, 'CaseCtx, 'ECtx])
+  Bind
+    :: (Elem lhs ['Simple, 'Case_], Elem rhs ['Simple, 'Case_, 'Bind_])
     => Exp lhs
     -> BPat
     -> Exp rhs
-    -> Exp 'ECtx
+    -> Exp 'Bind_
 
 type family Elem (c :: ExpCtx) (cs :: [ExpCtx]) :: Constraint where
   Elem c (c : _)  = ()
