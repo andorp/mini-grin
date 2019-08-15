@@ -94,41 +94,40 @@ class (Monad m, MonadFail m) => Interpreter m where
                            --   to distinguis between different stores.
 
   -- Conversions, but m type is needed for type inference
-  literal     :: Literal_ m -- ^ Convert a literal value to an value of the interpretation
-  val2addr    :: Val2Addr m -- ^ Extract the location information from a value, hint :: Val -> Addr
-  addr2val    :: Addr2Val m -- ^ Wrap a location information inside a value
-  heapVal2val :: HeapVal2Val m -- ^ Convert a value that is stored in the heap to a value that
-                        --   is stored in registers
-  val2heapVal :: Val2HeapVal m -- ^ Convert a value to the value that can be stored on the heap.
-  unit        :: Unit m -- ^ Some operations require unit values, this should provide it.
-  bindPattern :: BindPattern m -- ^ Bind the a value to pattern, creating a list of pairs (Name, Val)
+  literal     :: Literal_ m     -- ^ Convert a literal value to an value of the interpretation
+  val2addr    :: Val2Addr m     -- ^ Extract the location information from a value, hint :: Val -> Addr
+  addr2val    :: Addr2Val m     -- ^ Wrap a location information inside a value
+  heapVal2val :: HeapVal2Val m  -- ^ Convert a value that is stored in the heap to a value that
+                                --   is stored in registers
+  val2heapVal :: Val2HeapVal m  -- ^ Convert a value to the value that can be stored on the heap.
+  unit        :: Unit m         -- ^ Some operations require unit values, this should provide it.
+  bindPattern :: BindPattern m  -- ^ Bind the a value to pattern, creating a list of pairs (Name, Val)
 
-  -- Non-pure
-
-  lookupFun     :: LookupFun m -- ^ Looks up a function by its name and returns its Exp
-  isOperation   :: IsOperation m -- ^ Check if the given name is an external operation
-  operation     :: Operation m -- ^ Call the external operation
-  name2NewStoreInfo :: Name2NewStoreInfo m -- ^ Convert a given name for the information that is needed
-                              --   by the store allocation
+  -- Externals, functions
+  lookupFun         :: LookupFun m          -- ^ Looks up a function by its name and returns its Exp
+  isOperation       :: IsOperation m        -- ^ Check if the given name is an external operation
+  operation         :: Operation m          -- ^ Call the external operation
+  name2NewStoreInfo :: Name2NewStoreInfo m  -- ^ Convert a given name for the information that is needed
+                                            --   by the store allocation
 
   -- Control-flow
-  evalCase      :: EvalCase m -- ^ Gets an evaluator, a variable and a set of alternative cases, selecting the
-                              --   relevant ones and execute them.
-  funCall       :: FunCall m -- ^ Gets an evaluated, a name of a function with a list of values as values
-                             --   for the parameters and evaluates the body of the function
+  evalCase  :: EvalCase m -- ^ Gets an evaluator, a variable and a set of alternative cases, selecting the
+                          --   relevant ones and execute them.
+  funCall   :: FunCall m  -- ^ Gets an evaluated, a name of a function with a list of values as values
+                          --   for the parameters and evaluates the body of the function
 
   -- Env
-  askEnv        :: AskEnv m -- ^ Returns the active environment
+  askEnv        :: AskEnv m   -- ^ Returns the active environment
   localEnv      :: LocalEnv m -- ^ Sets the given environment as a local one
 
   -- Store
-  getStore      :: GetStore m -- ^ Returns the Store (Heap)
-  putStore      :: PutStore m -- ^ Sets the Store (Heap)
-  updateStore   :: UpdateStore m -- ^ Update the Store using the the given function
+  getStore      :: GetStore m     -- ^ Returns the Store (Heap)
+  putStore      :: PutStore m     -- ^ Sets the Store (Heap)
+  updateStore   :: UpdateStore m  -- ^ Update the Store using the the given function
   nextLocStore  :: NextLocStore m -- ^ Combines the new store info the given store, and return a possible new address
-  allocStore    :: AllocStore m -- ^ Creates a new location using the New
-  findStore     :: FindStore m -- ^ Retrieve a value from the Store addressed by the parameter
-  extStore      :: ExtStore m -- ^ Change the value of the given location
+  allocStore    :: AllocStore m   -- ^ Creates a new location using the New
+  findStore     :: FindStore m    -- ^ Retrieve a value from the Store addressed by the parameter
+  extStore      :: ExtStore m     -- ^ Change the value of the given location
 
 
 
