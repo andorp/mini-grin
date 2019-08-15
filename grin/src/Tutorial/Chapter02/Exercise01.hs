@@ -4,14 +4,11 @@ module Tutorial.Chapter02.Exercise01 where
 import Control.Monad (void)
 import Control.Monad.Fail
 import Control.Monad.Trans (MonadIO)
-import Data.Function (fix)
-import Data.Maybe (mapMaybe)
 import Grin.Exp
 import Grin.Interpreter.Env
 import Grin.Interpreter.Store
 import Grin.Value hiding (Val)
 
-import qualified Data.Map.Strict as Map
 import qualified Grin.Value as Grin
 
 {-
@@ -97,38 +94,179 @@ class (Monad m, MonadFail m) => Interpreter m where
                            --   to distinguis between different stores.
 
   -- Conversions, but m type is needed for type inference
-  literal     :: Todo m -- ^ Convert a literal value to an value of the interpretation
-  val2addr    :: Todo m -- ^ Extract the location information from a value, hint :: Val -> Addr
-  addr2val    :: Todo m -- ^ Wrap a location information inside a value
-  heapVal2val :: Todo m -- ^ Convert a value that is stored in the heap to a value that
+  literal     :: Literal_ m -- ^ Convert a literal value to an value of the interpretation
+  val2addr    :: Val2Addr m -- ^ Extract the location information from a value, hint :: Val -> Addr
+  addr2val    :: Addr2Val m -- ^ Wrap a location information inside a value
+  heapVal2val :: HeapVal2Val m -- ^ Convert a value that is stored in the heap to a value that
                         --   is stored in registers
-  val2heapVal :: Todo m -- ^ Convert a value to the value that can be stored on the heap.
-  unit        :: Todo m -- ^ Some operations require unit values, this should provide it.
-  bindPattern :: Todo m -- ^ Bind the a value to pattern, creating a list of pairs (Name, Val)
+  val2heapVal :: Val2HeapVal m -- ^ Convert a value to the value that can be stored on the heap.
+  unit        :: Unit m -- ^ Some operations require unit values, this should provide it.
+  bindPattern :: BindPattern m -- ^ Bind the a value to pattern, creating a list of pairs (Name, Val)
 
   -- Non-pure
 
-  lookupFun     :: Todo m -- ^ Looks up a function by its name and returns its Exp
-  isOperation   :: Todo m -- ^ Check if the given name is an external operation
-  operation     :: Todo m -- ^ Call the external operation
-  name2NewStoreInfo :: Todo m -- ^ Convert a given name for the information that is needed
+  lookupFun     :: LookupFun m -- ^ Looks up a function by its name and returns its Exp
+  isOperation   :: IsOperation m -- ^ Check if the given name is an external operation
+  operation     :: Operation m -- ^ Call the external operation
+  name2NewStoreInfo :: Name2NewStoreInfo m -- ^ Convert a given name for the information that is needed
                               --   by the store allocation
 
   -- Control-flow
-  evalCase      :: Todo m -- ^ Gets an evaluator, a variable and a set of alternative cases, selecting the
-                          --   relevant ones and execute them.
-  funCall       :: Todo m -- ^ Gets an evaluated, a name of a function with a list of values as values
-                          --   for the parameters and evaluates the body of the function
+  evalCase      :: EvalCase m -- ^ Gets an evaluator, a variable and a set of alternative cases, selecting the
+                              --   relevant ones and execute them.
+  funCall       :: FunCall m -- ^ Gets an evaluated, a name of a function with a list of values as values
+                             --   for the parameters and evaluates the body of the function
 
-  -- En
-  askEnv        :: Todo m -- ^ Returns the active environment
-  localEnv      :: Todo m -- ^ Sets the given environment as a local one
+  -- Env
+  askEnv        :: AskEnv m -- ^ Returns the active environment
+  localEnv      :: LocalEnv m -- ^ Sets the given environment as a local one
 
   -- Store
-  getStore      :: Todo m -- ^ Returns the Store (Heap)
-  putStore      :: Todo m -- ^ Sets the Store (Heap)
-  updateStore   :: Todo m -- ^ Update the Store using the the given function
-  nextLocStore  :: Todo m -- ^ Combines the new store info the given store, and return a possible new address
-  allocStore    :: Todo m -- ^ Creates a new location using the New
-  findStore     :: Todo m -- ^ Retrieve a value from the Store addressed by the parameter
-  extStore      :: Todo m -- ^ Change the value of the given location
+  getStore      :: GetStore m -- ^ Returns the Store (Heap)
+  putStore      :: PutStore m -- ^ Sets the Store (Heap)
+  updateStore   :: UpdateStore m -- ^ Update the Store using the the given function
+  nextLocStore  :: NextLocStore m -- ^ Combines the new store info the given store, and return a possible new address
+  allocStore    :: AllocStore m -- ^ Creates a new location using the New
+  findStore     :: FindStore m -- ^ Retrieve a value from the Store addressed by the parameter
+  extStore      :: ExtStore m -- ^ Change the value of the given location
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+type Literal_ m  = Grin.Literal -> m (Val m)
+type Val2Addr m = Val m -> m (Addr m)
+type Addr2Val m = Addr m -> m (Val m)
+type HeapVal2Val m = HeapVal m -> m (Val m)
+type Val2HeapVal m = Val m -> m (HeapVal m)
+type Unit m = m (Val m)
+type BindPattern m = Val m -> (Tag, [Name]) -> m [(Name, Val m)]
+type AskEnv m = m (Env (Val m))
+type LocalEnv m = Env (Val m) -> m (Val m) -> m (Val m)
+type LookupFun m = Name -> m Exp
+type IsOperation m = Name -> m Bool
+type Operation m = Name -> [Val m] -> m (Val m)
+type Name2NewStoreInfo m = Name -> m (NewStoreInfo m)
+type EvalCase m = (Exp -> m (Val m)) -> Val m -> [Alt] -> m (Val m)
+type FunCall m = (Exp -> m (Val m)) -> Name -> [Val m] -> m (Val m)
+type GetStore m = m (Store (Addr m) (StoreVal m))
+type PutStore m = (Store (Addr m) (StoreVal m)) -> m ()
+type UpdateStore m = (Store (Addr m) (StoreVal m) -> Store (Addr m) (StoreVal m)) -> m ()
+type NextLocStore m = NewStoreInfo m -> Store (Addr m) (StoreVal m) -> m (Addr m)
+type AllocStore m = NewStoreInfo m -> m (Val m)
+type FindStore m = Val m -> m (Val m)
+type ExtStore m = Val m -> Val m -> m ()
