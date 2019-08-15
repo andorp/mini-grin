@@ -5,10 +5,11 @@ import Control.Monad (void)
 import Control.Monad.Fail
 import Control.Monad.Trans (MonadIO)
 import Grin.Exp
-import Grin.Interpreter.Env
 import Grin.Interpreter.Store
 import Grin.Value hiding (Val)
 
+import Grin.Interpreter.Env (Env)
+import qualified Grin.Interpreter.Env as Env
 import qualified Grin.Value as Grin
 
 {-
@@ -27,51 +28,51 @@ eval ev0 = \case
   SPure (Lit l) -> literal l
   SPure (Var n) -> do
     p <- askEnv
-    pure $ lookupEnv p n
+    pure $ Env.lookup p n
 
   SApp fn ps -> do
     p <- askEnv
-    vs <- pure $ map (lookupEnv p) ps
+    vs <- pure $ map (Env.lookup p) ps
     op <- isOperation fn
     (if op then operation else funCall ev0) fn vs
 
   SFetch n -> do
     p <- askEnv
-    let v = lookupEnv p n
+    let v = Env.lookup p n
     findStore v
 
   SUpdate nl nn -> do
     p <- askEnv
-    let vl = lookupEnv p nl
-    let vn = lookupEnv p nn
+    let vl = Env.lookup p nl
+    let vn = Env.lookup p nn
     extStore vl vn
     unit
 
   ECase n alts -> do
     p <- askEnv
-    v <- pure $ lookupEnv p n
+    v <- pure $ Env.lookup p n
     -- Select the alternative and continue the evaluation
     evalCase ev0 v alts
 
   EBind (SStore n) (BVar l) rhs -> do
     p <- askEnv
-    let v = lookupEnv p n
+    let v = Env.lookup p n
     ac <- name2NewStoreInfo l
     a  <- allocStore ac
     extStore a v
-    let p' = extendEnv p [(l, a)]
+    let p' = Env.insert [(l, a)] p
     localEnv p' (ev0 rhs)
 
   EBind lhs (BVar n) rhs -> do
     v <- ev0 lhs
     p <- askEnv
-    let p' = extendEnv p [(n, v)]
+    let p' = Env.insert [(n, v)] p
     localEnv p' (ev0 rhs)
 
   EBind lhs (BNodePat t@(Tag{}) vs) rhs -> do
     v   <- ev0 lhs
     p   <- askEnv
-    p'  <- extendEnv p <$> bindPattern v (t,vs)
+    p'  <- flip Env.insert p <$> bindPattern v (t,vs)
     localEnv p' (ev0 rhs)
 
   EBind lhs BUnit rhs -> do

@@ -13,10 +13,13 @@ import Data.Maybe (fromJust, fromMaybe, isNothing)
 import Data.Word
 import Grin.Exp
 import Grin.Interpreter.Base
+import Grin.Interpreter.Store
 import Grin.Value (Name, Tag)
 import Lens.Micro.Platform
 import Prelude hiding (fail)
 
+import Grin.Interpreter.Env (Env)
+import qualified Grin.Interpreter.Env as Env
 import qualified Data.Map.Strict as Map
 import qualified Grin.Value as Grin
 
@@ -74,7 +77,7 @@ runDefinitionalT prog ops n = runReaderT (evalStateT (definitionalT n) emptyStor
       DefEnv
         (programToDefs prog)
         (Map.fromList ops)
-        emptyEnv
+        Env.empty
 
 data HeapCtx = HeapCtx
 
@@ -89,7 +92,7 @@ instance (Applicative m, Monad m, MonadFail m) => Interpreter (DefinitionalT m) 
   literal = \case
     (Grin.LNode (Grin.Node t0 ps)) -> do
       p  <- askEnv
-      vs <- pure $ map (lookupEnv p) ps
+      vs <- pure $ map (Env.lookup p) ps
       pure $ DNode $ Node t0 $ map (\case
         DVal v -> v
         other -> error $ "value " ++ show other
@@ -156,7 +159,7 @@ instance (Applicative m, Monad m, MonadFail m) => Interpreter (DefinitionalT m) 
       evalBranch (DNode (Node t0 vs)) (Alt (NodePat t1 nps) body)
         | t0 == t1 = do
             p <- askEnv
-            let p' = extendEnv p (nps `zip` (DVal <$> vs))
+            let p' = Env.insert (nps `zip` (DVal <$> vs)) p
             localEnv p' (ev0 body)
       evalBranch _                    (Alt _               body) = ev0 body
       evalBranch pat alt = error $ "evalBranch: " ++ show (pat, alt)
@@ -164,7 +167,7 @@ instance (Applicative m, Monad m, MonadFail m) => Interpreter (DefinitionalT m) 
   funCall :: (Exp -> DefinitionalT m DVal) -> Name -> [DVal] -> DefinitionalT m DVal
   funCall ev0 fn vs = do
     (Def _ fps body) <- lookupFun fn
-    let p' = extendEnv emptyEnv (fps `zip` vs)
+    let p' = Env.insert (fps `zip` vs) Env.empty
     localEnv p' (ev0 body)
 
   getStore :: DefinitionalT m (Store Loc Node)

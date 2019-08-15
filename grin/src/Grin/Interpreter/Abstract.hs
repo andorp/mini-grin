@@ -18,10 +18,13 @@ import Grin.Exp
 import Grin.TypeEnv hiding (TypeEnv(..), Loc)
 import Grin.Value (Name, Tag)
 import Grin.Interpreter.Base
+import Grin.Interpreter.Store
 import Grin.Pretty hiding (SChar)
 import Lens.Micro.Platform
 import Prelude hiding (fail)
 
+import Grin.Interpreter.Env (Env(..))
+import qualified Grin.Interpreter.Env as Env
 import qualified Data.List as List (nub)
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set; import Data.Set (Set)
@@ -152,7 +155,7 @@ runAbstractT prog ops m =
     (observeAllT
       (runRWST
         (abstractT m)
-        (AbsEnv (Map.fromList ops) emptyEnv (programToDefs prog))
+        (AbsEnv (Map.fromList ops) Env.empty (programToDefs prog))
         (AbsState emptyStore)))
     mempty
     mempty
@@ -259,7 +262,7 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
   literal = \case
     (Grin.LNode (Grin.Node tag ps)) -> do
       p  <- askEnv
-      ts <- pure $ map (lookupEnv p) ps
+      ts <- pure $ map (Env.lookup p) ps
       pure $ NT $ Node tag $ map (\case
         ST t -> t
         other -> error $ unwords ["value", show other] -- TODO: Include type error
@@ -334,14 +337,14 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
       extendAlt alt@(Alt (NodePat _ ns) _body) = case v of
         NT (Node _t0 vs) -> do
           p <- askEnv
-          localEnv (extendEnv p (ns `zip` (ST <$> vs))) $ ev0 alt
+          localEnv (Env.insert (ns `zip` (ST <$> vs)) p) $ ev0 alt
         nonNodeType -> error $ show nonNodeType
       extendAlt overGenerative = error $ show overGenerative
 
   funCall :: (Exp -> AbstractT m T) -> Name -> [T] -> AbstractT m T
   funCall ev0 fn vs = do
     (Def _ fps body) <- lookupFun fn
-    let p' = extendEnv emptyEnv (fps `zip` vs)
+    let p' = Env.insert (fps `zip` vs) Env.empty
     v <- localEnv p' (ev0 body)
     appendFunOut (fn,vs,v)
     pure v

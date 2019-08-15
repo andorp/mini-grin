@@ -6,12 +6,14 @@ import Data.Int
 import Data.Word
 import Data.Maybe
 import Grin.Exp
-import Grin.Interpreter.Env
 import Grin.Interpreter.Store
 import Control.Monad.Fail
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Trans.RWS.Strict (RWST(..))
+
+import Grin.Interpreter.Env (Env)
+import qualified Grin.Interpreter.Env as Env
 import qualified Grin.Value as Grin
 import qualified Data.Map.Strict as Map
 
@@ -39,7 +41,7 @@ runInterpreter
   :: (Monad m, MonadIO m)
   => Interpreter m a -> m (a, Store Address Node)
 runInterpreter (Interpreter r) = do
-  (a,store,()) <- runRWST r emptyEnv emptyStore
+  (a,store,()) <- runRWST r Env.empty emptyStore
   pure (a,store)
 
 type InterpretExternal = Grin.Name -> [Value] -> IO Value
@@ -77,7 +79,7 @@ simpleValue = \case
   Grin.SChar   s -> SChar   s
 
 valueOf :: Grin.Name -> Interpreter IO Value
-valueOf name = asks (`lookupEnv` name)
+valueOf name = asks (`Env.lookup` name)
 
 svalueOf :: Grin.Name -> Interpreter IO SValue
 svalueOf name = do
@@ -166,7 +168,7 @@ eval ctx = \case
       Nothing -> liftIO $ externalCalls fn callValues
       Just (Def _ funParamNames body) -> do
         -- Creates a new local environment which contains only the function parameters
-        local (const $ extendEnv emptyEnv (funParamNames `zip` callValues))
+        local (const $ Env.insert (funParamNames `zip` callValues) Env.empty)
               (eval ctx body)
       overGenerative -> error $ show overGenerative
 

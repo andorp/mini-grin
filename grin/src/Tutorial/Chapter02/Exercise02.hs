@@ -1,7 +1,6 @@
 {-# LANGUAGE LambdaCase, TypeFamilies, InstanceSigs #-}
 module Tutorial.Chapter02.Exercise02 where
 
-import Grin.Interpreter.Env
 import Grin.Interpreter.Store
 import Control.Monad (when)
 import Control.Monad.Fail (MonadFail(..))
@@ -16,6 +15,8 @@ import Grin.Value hiding (Val, Node)
 import Lens.Micro.Platform
 import Prelude hiding (fail)
 
+import Grin.Interpreter.Env (Env)
+import qualified Grin.Interpreter.Env as Env
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set; import Data.Set (Set)
 import qualified Grin.Value as Grin
@@ -79,7 +80,7 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
   literal = \case
     (Grin.LNode (Grin.Node tag ps)) -> do
       p  <- askEnv
-      ts <- pure $ map (lookupEnv p) ps
+      ts <- pure $ map (Env.lookup p) ps
       pure $ NT $ Node tag $ map (\case
         ST t -> t
         other -> error $ unwords ["value", show other] -- TODO: Include type error
@@ -129,7 +130,7 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
   funCall :: (Exp -> AbstractT m T) -> Name -> [T] -> AbstractT m T
   funCall ev0 fn vs = do
     (Def _ fps body) <- lookupFun fn
-    let p' = extendEnv emptyEnv (fps `zip` vs)
+    let p' = Env.insert (fps `zip` vs) Env.empty
     v <- localEnv p' (ev0 body)
     appendFunOut (fn,vs,v)
     pure v
