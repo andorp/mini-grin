@@ -88,6 +88,7 @@ data AbsEnv
 makeLenses ''AbsEnv
 
 newtype FunctionT = FunctionT (Set T, [Set T])
+  deriving (Eq)
 
 instance Semigroup FunctionT where
   (FunctionT (r1,ps1)) <> (FunctionT (r2,ps2)) = FunctionT ((r1 <> r2),(zipWith (<>) ps1 ps2)) -- TODO: Check
@@ -102,7 +103,7 @@ data TypeEnv = TypeEnv
   { _location :: AbsStore
   , _variable :: Env (Set T)
   , _function :: Map.Map Name FunctionT
-  }
+  } deriving (Eq)
 
 instance Semigroup TypeEnv where
   TypeEnv l1 v1 f1 <> TypeEnv l2 v2 f2 = TypeEnv (l1 <> l2) (v1 <> v2) (Map.unionWith (<>) f1 f2)
@@ -420,8 +421,11 @@ fixCache eval0 e = do
     void $ localCacheIn cin $ eval0 e
     getCacheOut
 
-evalAbstractOne :: (Monad m, MonadFail m, MonadIO m) => Program -> m (TypeEnv, Cache)
-evalAbstractOne prog = do
+typeInference :: (Monad m, MonadFail m, MonadIO m) => Program -> m TypeEnv
+typeInference = fmap fst . evalAbstract
+
+evalAbstract :: (Monad m, MonadFail m, MonadIO m) => Program -> m (TypeEnv, Cache)
+evalAbstract prog = do
   let ops = [ ("prim_int_add", prim_int_add)
             , ("prim_int_sub", prim_int_sub)
             , ("prim_int_mul", prim_int_mul)
@@ -433,7 +437,7 @@ evalAbstractOne prog = do
   forM_ exts $ \ext -> do
     when (isNothing (Map.lookup (eName ext) opsMap)) $
       fail $ "Missing external: " ++ show (eName ext)
-  (\(_,tc,_) -> tc) <$> runAbstractT prog ops (fixCache (fix (evalCache ev)) (grinMain prog))
+  (\(_,tc,_) -> tc) <$> runAbstractT prog ops (fixCache (fix (evalCache baseEval)) (grinMain prog))
   where
     exts = externals prog
     prim_int_add    = (ST ST_Int64, [ST ST_Int64, ST ST_Int64])

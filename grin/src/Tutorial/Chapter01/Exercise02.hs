@@ -87,6 +87,22 @@ svalueOf name = do
 alloc :: Interpreter IO Address
 alloc = gets storeSize
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 -- Write a function that interprets the given expression. The function gets the body of the main.
 eval :: Context -> Exp -> Interpreter IO Value
 eval ctx = \case
@@ -155,6 +171,28 @@ eval ctx = \case
       overGenerative -> error $ show overGenerative
 
   overGenerative -> error $ show overGenerative
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 -- * Helpers
 

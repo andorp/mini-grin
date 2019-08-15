@@ -22,12 +22,12 @@ import qualified Grin.Value as Grin
 -- * Interpreter
 
 eval :: (Interpreter m, MonadIO m, Show v, v ~ Val m) => Exp -> m v
-eval = fix ev
+eval = fix baseEval
 
 -- Open recursion and monadic interpreter.
-ev  :: (MonadIO m, Interpreter m, a ~ Addr m, v ~ Val m, Show v)
-    => (Exp -> m (Val m)) -> Exp -> m (Val m)
-ev ev0 = \case
+baseEval :: (MonadIO m, Interpreter m, a ~ Addr m, v ~ Val m, Show v)
+         => (Exp -> m (Val m)) -> Exp -> m (Val m)
+baseEval ev0 = \case
   SPure (Lit l) -> literal l
   SPure (Var n) -> do
     p <- askEnv

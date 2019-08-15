@@ -1,37 +1,44 @@
-{-# LANGUAGE LambdaCase, TypeFamilies #-}
+{-# LANGUAGE LambdaCase, TypeFamilies, InstanceSigs #-}
 module Tutorial.Chapter02.Exercise02 where
 
-import Grin.Interpreter.Base
-import Grin.Interpreter.Abstract
-import Control.Applicative (Alternative(..))
-import Control.Monad (MonadPlus(..), forM_, msum, filterM)
+import Grin.Interpreter.Env
+import Grin.Interpreter.Store
 import Control.Monad (when)
 import Control.Monad.Fail (MonadFail(..))
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Logic hiding (fail)
 import Control.Monad.Reader (MonadReader(..))
 import Control.Monad.State (MonadState(..))
-import Control.Monad.Trans.RWS.Strict hiding (ask, local, get)
+import Data.Maybe
 import Data.Function (fix)
-import Data.Maybe (fromMaybe, fromJust)
-import Data.Maybe (isNothing)
 import Grin.Exp
-import Grin.TypeEnv hiding (TypeEnv(..), Loc)
 import Grin.Value hiding (Val, Node)
-import Grin.Interpreter.Base
-import Grin.Pretty hiding (SChar)
 import Lens.Micro.Platform
 import Prelude hiding (fail)
 
-import qualified Data.List as List (nub)
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set; import Data.Set (Set)
-import qualified Grin.TypeEnv as Grin
 import qualified Grin.Value as Grin
-import qualified Text.PrettyPrint.ANSI.Leijen as PP
+
+import Grin.Interpreter.Abstract
+  ( AbstractT, Cache, TypeEnv, T(..), ST(..), Loc(..), AbsStore(..), AbsEnv(..), AbsState(..), Node(..)
+  , evalCache, fixCache, runAbstractT, absStr, appendFunOut, absEnv, appendEnvOut, typeOfSimpleValue
+  )
+import Tutorial.Chapter01.Exercise02 as Exercise (grinMain)
+import Tutorial.Chapter02.Exercise01 as Exercise
 
 
--- newtype AbstractTE m a = AbstractTE (AbstractT m)
+
+{-
+TODO: Explain the exercise.
+Implement the functions, find the differences
+-}
+
+
+
+
+forMonadPlus :: (MonadPlus m) => [a] -> (a -> m b) -> m b
+forMonadPlus xs k = msum (map k xs)
 
 instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
   type Val          (AbstractT m) = T
@@ -40,26 +47,52 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
   type Addr         (AbstractT m) = Loc
   type NewStoreInfo (AbstractT m) = Name
 
-  value :: Grin.Val -> AbstractT m T
-  value = \case
-    (CNode (Grin.Node tag ps)) -> do
+
+
+  findStore :: T -> AbstractT m T
+  findStore v = do
+    s <- getStore
+    a <- val2addr v
+    forMonadPlus (Set.toList $ storeFind s a) heapVal2val
+
+  bindPattern :: T -> (Tag, [Name]) -> AbstractT m [(Name, T)]
+  bindPattern t (tag,ps) = error "TODO"
+
+  evalCase :: (Exp -> AbstractT m T) -> T -> [Alt] -> AbstractT m T
+  evalCase ev0 v alts = error "TODO"
+
+  extStore :: T -> T -> AbstractT m ()
+  extStore v0 v1 = do
+    a <- val2addr v0
+    n <- val2heapVal v1
+    let changeElem x = (fmap (Set.insert n) x) `mplus` (Just (Set.singleton n))
+    updateStore (\(Store m) -> Store (Map.alter changeElem a m))
+
+
+  localEnv :: Env T -> AbstractT m T -> AbstractT m T
+  localEnv env m = do
+    appendEnvOut env
+    local (absEnv .~ env) m
+
+
+  literal :: Grin.Literal -> AbstractT m T
+  literal = \case
+    (Grin.LNode (Grin.Node tag ps)) -> do
       p  <- askEnv
       ts <- pure $ map (lookupEnv p) ps
       pure $ NT $ Node tag $ map (\case
         ST t -> t
         other -> error $ unwords ["value", show other] -- TODO: Include type error
         ) ts
-    (Lit l) -> pure $ typeOfLit l
-    Unit    -> pure $ UT
-    (Var v) -> error $ unwords ["value", nameString v]
+    (Grin.LVal l) -> pure $ typeOfSimpleValue l
 
   val2addr :: T -> AbstractT m Loc
   val2addr = \case
-    ST (SLoc l) -> pure l
-    other       -> error $ unwords ["val2addr", show other]
+    ST (ST_Loc l) -> pure l
+    other         -> error $ unwords ["val2addr", show other]
 
   addr2val :: Loc -> AbstractT m T
-  addr2val l = pure $ ST $ SLoc l
+  addr2val l = pure $ ST $ ST_Loc l
 
   val2heapVal :: T -> AbstractT m Node
   val2heapVal = \case
@@ -75,22 +108,10 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
   unit :: AbstractT m T
   unit = pure UT
 
-  -- TODO: Exercise
-  bindPattern :: T -> (Tag, [Name]) -> AbstractT m [(Name, T)]
-  bindPattern t (tag,ps) = case t of
-    NT (Node t1 ps1)
-      | t1 == tag -> pure (ps `zip` (ST <$> ps1))
-      | otherwise -> mzero
-    other -> error $ unwords ["bindPattern", show other]
-
   -- non-pure
   askEnv :: AbstractT m (Env T)
   askEnv = _absEnv <$> ask
 
-  localEnv :: Env T -> AbstractT m T -> AbstractT m T
-  localEnv env m = do
-    appendEnvOut env
-    local (absEnv .~ env) m
 
   lookupFun :: Name -> AbstractT m Exp
   lookupFun fn = (fromMaybe (error $ unwords ["lookupFun", nameString fn]) . Map.lookup fn . _absFun) <$> ask
@@ -104,27 +125,6 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
     when (ps /= ts) $ error $ unwords ["operation", nameString n, show ps, show ts]
     appendFunOut (n,ts,r)
     pure r
-
-  evalCase :: (Exp -> AbstractT m T) -> T -> [Alt] -> AbstractT m T
-  evalCase ev0 v alts = do
-    selectedAlts <- filterM isMatching alts
-    forMonadPlus selectedAlts extendAlt
-    where
-      isMatching (Alt DefaultPat      _) = pure True
-      isMatching (Alt (LitPat l)      _) = (v ==) <$> value (Lit l)
-      isMatching (Alt (NodePat t _ps) _) = case v of
-        NT (Node t0 _) -> pure $ t == t0
-        _nonNodeType   -> pure False
-      isMatching overGenerative = error $ show overGenerative
-
-      extendAlt alt@(Alt DefaultPat     _body) = ev0 alt
-      extendAlt alt@(Alt (LitPat _)     _body) = ev0 alt
-      extendAlt alt@(Alt (NodePat _ ns) _body) = case v of
-        NT (Node _t0 vs) -> do
-          p <- askEnv
-          localEnv (extendEnv p (ns `zip` (ST <$> vs))) $ ev0 alt
-        nonNodeType -> error $ show nonNodeType
-      extendAlt overGenerative = error $ show overGenerative
 
   funCall :: (Exp -> AbstractT m T) -> Name -> [T] -> AbstractT m T
   funCall ev0 fn vs = do
@@ -150,17 +150,42 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
   allocStore ctx = do
     s <- getStore
     l <- nextLocStore ctx s
-    pure $ ST $ SLoc l
+    pure $ ST $ ST_Loc l
 
-  findStore :: T -> AbstractT m T
-  findStore v = do
-    s <- getStore
-    a <- val2addr v
-    forMonadPlus (Set.toList $ storeFind s a) heapVal2val
 
-  extStore :: T -> T -> AbstractT m ()
-  extStore v0 v1 = do
-    a <- val2addr v0
-    n <- val2heapVal v1
-    let changeElem x = (fmap (Set.insert n) x) `mplus` (Just (Set.singleton n))
-    updateStore (\(Store m) -> Store (Map.alter changeElem a m))
+
+
+
+
+
+
+
+
+
+
+
+typeInference :: (Monad m, MonadFail m, MonadIO m) => Program -> m TypeEnv
+typeInference = fmap fst . evalAbstract
+
+evalAbstract :: (Monad m, MonadFail m, MonadIO m) => Program -> m (TypeEnv, Cache)
+evalAbstract prog = do
+  let ops = [ ("prim_int_add", prim_int_add)
+            , ("prim_int_sub", prim_int_sub)
+            , ("prim_int_mul", prim_int_mul)
+            , ("prim_int_print", prim_int_print)
+            , ("prim_int_eq", prim_int_eq)
+            , ("prim_int_gt", prim_int_gt)
+            ]
+  let opsMap = Map.fromList ops
+  forM_ exts $ \ext -> do
+    when (isNothing (Map.lookup (eName ext) opsMap)) $
+      fail $ "Missing external: " ++ show (eName ext)
+  (\(_,tc,_) -> tc) <$> runAbstractT prog ops (fixCache (fix (evalCache Exercise.eval)) (Exercise.grinMain prog))
+  where
+    exts = externals prog
+    prim_int_add    = (ST ST_Int64, [ST ST_Int64, ST ST_Int64])
+    prim_int_sub    = (ST ST_Int64, [ST ST_Int64, ST ST_Int64])
+    prim_int_mul    = (ST ST_Int64, [ST ST_Int64, ST ST_Int64])
+    prim_int_eq     = (ST ST_Bool,  [ST ST_Int64, ST ST_Int64])
+    prim_int_gt     = (ST ST_Bool,  [ST ST_Int64, ST ST_Int64])
+    prim_int_print  = (UT, [ST ST_Int64])

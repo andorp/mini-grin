@@ -18,9 +18,12 @@ Change the types in the Interpreter to make compile eval interpreter.
 -}
 
 
-ev  :: (MonadIO m, Interpreter m, a ~ Addr m, v ~ Val m, Show v)
+
+
+
+eval  :: (MonadIO m, Interpreter m, a ~ Addr m, v ~ Val m, Show v)
     => (Exp -> m (Val m)) -> Exp -> m (Val m)
-ev ev0 = \case
+eval ev0 = \case
   SPure (Lit l) -> literal l
   SPure (Var n) -> do
     p <- askEnv
@@ -80,9 +83,20 @@ ev ev0 = \case
 
   overGenerative -> error $ show overGenerative
 
--- * Type class
 
-type Todo m = m ()
+
+
+
+
+
+
+
+
+
+
+
+
+-- * Type class
 
 -- Change the types in this typeclass to make compile the ev interpreter above
 class (Monad m, MonadFail m) => Interpreter m where
