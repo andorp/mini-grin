@@ -1,7 +1,6 @@
 {-# LANGUAGE LambdaCase, TypeFamilies, InstanceSigs #-}
 module Tutorial.Chapter02.Exercise02 where
 
-import Grin.Interpreter.Store
 import Control.Monad (when)
 import Control.Monad.Fail (MonadFail(..))
 import Control.Monad.IO.Class (MonadIO(..))
@@ -17,6 +16,8 @@ import Prelude hiding (fail)
 
 import Grin.Interpreter.Env (Env)
 import qualified Grin.Interpreter.Env as Env
+import Grin.Interpreter.Store (Store(..))
+import qualified Grin.Interpreter.Store as Store
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set; import Data.Set (Set)
 import qualified Grin.Value as Grin
@@ -54,7 +55,7 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
   findStore v = do
     s <- getStore
     a <- val2addr v
-    forMonadPlus (Set.toList $ storeFind s a) heapVal2val
+    forMonadPlus (Set.toList $ Store.lookup a s) heapVal2val
 
   bindPattern :: T -> (Tag, [Name]) -> AbstractT m [(Name, T)]
   bindPattern t (tag,ps) = error "TODO"

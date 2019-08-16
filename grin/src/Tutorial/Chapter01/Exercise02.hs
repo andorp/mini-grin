@@ -6,7 +6,6 @@ import Data.Int
 import Data.Word
 import Data.Maybe
 import Grin.Exp
-import Grin.Interpreter.Store
 import Control.Monad.Fail
 import Control.Monad.Reader
 import Control.Monad.State
@@ -14,6 +13,8 @@ import Control.Monad.Trans.RWS.Strict (RWST(..))
 
 import Grin.Interpreter.Env (Env)
 import qualified Grin.Interpreter.Env as Env
+import Grin.Interpreter.Store (Store)
+import qualified Grin.Interpreter.Store as Store
 import qualified Grin.Value as Grin
 import qualified Data.Map.Strict as Map
 
@@ -41,7 +42,7 @@ runInterpreter
   :: (Monad m, MonadIO m)
   => Interpreter m a -> m (a, Store Address Node)
 runInterpreter (Interpreter r) = do
-  (a,store,()) <- runRWST r Env.empty emptyStore
+  (a,store,()) <- runRWST r Env.empty Store.empty
   pure (a,store)
 
 type InterpretExternal = Grin.Name -> [Value] -> IO Value
@@ -87,7 +88,7 @@ svalueOf name = do
   pure sv
 
 alloc :: Interpreter IO Address
-alloc = gets storeSize
+alloc = gets Store.size
 
 
 
@@ -121,7 +122,7 @@ eval ctx = \case
   SStore n -> do
     (Node node) <- valueOf n
     addr <- alloc
-    modify (storeExt addr node)
+    modify (Store.insert addr node)
     pure $ Prim $ SLoc addr
 
   -- Fetch a value from the heap, addressed by

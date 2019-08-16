@@ -23,6 +23,8 @@ import Grin.Pretty hiding (SChar)
 import Lens.Micro.Platform
 import Prelude hiding (fail)
 
+import Grin.Interpreter.Store (Store)
+import qualified Grin.Interpreter.Store as Store
 import Grin.Interpreter.Env (Env(..))
 import qualified Grin.Interpreter.Env as Env
 import qualified Data.List as List (nub)
@@ -156,7 +158,7 @@ runAbstractT prog ops m =
       (runRWST
         (abstractT m)
         (AbsEnv (Map.fromList ops) Env.empty (programToDefs prog))
-        (AbsState emptyStore)))
+        (AbsState Store.empty)))
     mempty
     mempty
 
@@ -371,7 +373,7 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
   findStore v = do
     s <- getStore
     a <- val2addr v
-    forMonadPlus (Set.toList $ storeFind s a) heapVal2val
+    forMonadPlus (Set.toList $ Store.lookup a s) heapVal2val
 
   extStore :: T -> T -> AbstractT m ()
   extStore v0 v1 = do

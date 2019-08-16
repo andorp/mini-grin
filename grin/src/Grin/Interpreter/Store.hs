@@ -9,17 +9,17 @@ import qualified Data.Map.Strict as Map
 newtype Store a v = Store (Map.Map a v)
   deriving (Eq, Ord, Show)
 
-emptyStore :: (Ord a) => Store a v
-emptyStore = Store mempty
+empty :: (Ord a) => Store a v
+empty = Store mempty
 
-storeFind :: (Ord a) => Store a v -> a -> v
-storeFind (Store m) a = fromMaybe (error "Store; missing") $ Map.lookup a m
+lookup :: (Ord a) => a -> Store a v-> v
+lookup a (Store m) = fromMaybe (error "Store; missing") $ Map.lookup a m
 
-storeExt :: (Ord a) => a -> v -> Store a v -> Store a v
-storeExt a v (Store m) = Store (Map.insert a v m)
+insert :: (Ord a) => a -> v -> Store a v -> Store a v
+insert a v (Store m) = Store (Map.insert a v m)
 
-storeSize :: Store a v -> Int
-storeSize (Store m) = Map.size m
+size :: Store a v -> Int
+size (Store m) = Map.size m
 
 instance (Ord a, Semigroup v) => Semigroup (Store a v) where
   (Store ma) <> (Store mb) = Store (Map.unionWith (<>) ma mb)

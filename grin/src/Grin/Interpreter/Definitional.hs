@@ -13,11 +13,12 @@ import Data.Maybe (fromJust, fromMaybe, isNothing)
 import Data.Word
 import Grin.Exp
 import Grin.Interpreter.Base
-import Grin.Interpreter.Store
 import Grin.Value (Name, Tag)
 import Lens.Micro.Platform
 import Prelude hiding (fail)
 
+import Grin.Interpreter.Store (Store(..))
+import qualified Grin.Interpreter.Store as Store
 import Grin.Interpreter.Env (Env)
 import qualified Grin.Interpreter.Env as Env
 import qualified Data.Map.Strict as Map
@@ -71,7 +72,7 @@ newtype DefinitionalT m a = DefinitionalT
   deriving (Functor, Applicative, Monad, MonadFail, MonadIO, MonadReader (DefEnv m DVal), MonadState (Store Loc Node))
 
 runDefinitionalT :: (Monad m) => Exp -> [(Name, [DVal] -> m DVal)] -> DefinitionalT m a -> m a
-runDefinitionalT prog ops n = runReaderT (evalStateT (definitionalT n) emptyStore) definitional
+runDefinitionalT prog ops n = runReaderT (evalStateT (definitionalT n) Store.empty) definitional
   where
     definitional =
       DefEnv
@@ -192,13 +193,13 @@ instance (Applicative m, Monad m, MonadFail m) => Interpreter (DefinitionalT m) 
   findStore l = do
     s <- getStore
     a <- val2addr l
-    heapVal2val $ storeFind s a
+    heapVal2val $ Store.lookup a s
 
   extStore :: DVal -> DVal -> DefinitionalT m ()
   extStore l n = do
     a <- val2addr l
     v <- val2heapVal n
-    updateStore (storeExt a v)
+    updateStore (Store.insert a v)
 
 evalDefinitional :: (Monad m, MonadFail m, MonadIO m) => Program -> m DVal
 evalDefinitional prog = do
