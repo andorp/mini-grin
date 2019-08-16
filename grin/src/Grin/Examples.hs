@@ -11,7 +11,7 @@ import Grin.TypeEnv
 add :: Exp 'Prg
 add =
   Program
-    [ External "prim_int_add" (TySimple T_Int64) [TySimple T_Int64, TySimple T_Int64]
+    [ External "prim_int_add" (TySimple T_Int64) [TySimple T_Int64, TySimple T_Int64] False
     ]
     [ Def "add" ["s1", "s2"] $
         Bind (App "prim_int_add" ["s1", "s2"]) (BVar "s3") $
@@ -25,10 +25,10 @@ add =
 fact :: Exp 'Prg
 fact =
   Program
-    [ External "prim_int_sub"   (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64]
-    , External "prim_int_mul"   (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64]
-    , External "prim_int_eq"    (TySimple T_Bool)   [TySimple T_Int64, TySimple T_Int64]
-    , External "prim_int_print" (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64]
+    [ External "prim_int_sub"   (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64] False
+    , External "prim_int_mul"   (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64] False
+    , External "prim_int_eq"    (TySimple T_Bool)   [TySimple T_Int64, TySimple T_Int64] False
+    , External "prim_int_print" (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64] True
     ]
     [ Def "fact" ["f1"] $
         Bind (Pure (Lit (LVal (SInt64 0)))) (BVar "f2") $
@@ -53,11 +53,11 @@ fact =
 sumSimple :: Exp 'Prg
 sumSimple =
   Program
-    [ External "prim_int_add"   (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64]
-    , External "prim_int_sub"   (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64]
-    , External "prim_int_eq"    (TySimple T_Bool)   [TySimple T_Int64, TySimple T_Int64]
-    , External "prim_int_gt"    (TySimple T_Bool)   [TySimple T_Int64, TySimple T_Int64]
-    , External "prim_int_print" (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64]
+    [ External "prim_int_add"   (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64] False
+    , External "prim_int_sub"   (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64] False
+    , External "prim_int_eq"    (TySimple T_Bool)   [TySimple T_Int64, TySimple T_Int64] False
+    , External "prim_int_gt"    (TySimple T_Bool)   [TySimple T_Int64, TySimple T_Int64] False
+    , External "prim_int_print" (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64] True
     ]
     [ Def "main" [] $
         Bind (Pure (Lit (LVal (SInt64 1)))) (BVar "m1") $

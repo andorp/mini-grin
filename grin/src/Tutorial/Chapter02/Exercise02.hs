@@ -10,6 +10,7 @@ import Control.Monad.State (MonadState(..))
 import Data.Maybe
 import Data.Function (fix)
 import Grin.Exp
+import qualified Grin.TypeEnv as Grin
 import Grin.Value hiding (Val, Node)
 import Lens.Micro.Platform
 import Prelude hiding (fail)
@@ -24,7 +25,7 @@ import qualified Grin.Value as Grin
 
 import Grin.Interpreter.Abstract
   ( AbstractT, Cache, TypeEnv, T(..), ST(..), Loc(..), AbsStore(..), AbsEnv(..), AbsState(..), Node(..)
-  , evalCache, fixCache, runAbstractT, absStr, appendFunOut, absEnv, appendEnvOut, typeOfSimpleValue
+  , evalCache, fixCache, runAbstractT, absStr, appendFunOut, absEnv, appendEnvOut, typeOfSimpleValue, calcTypeEnv
   )
 import Tutorial.Chapter01.Exercise02 as Exercise (grinMain)
 import Tutorial.Chapter02.Exercise01 as Exercise
@@ -166,8 +167,8 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
 
 
 
-typeInference :: (Monad m, MonadFail m, MonadIO m) => Program -> m TypeEnv
-typeInference = fmap fst . evalAbstract
+typeInference :: (Monad m, MonadFail m, MonadIO m) => Program -> m Grin.TypeEnv
+typeInference = fmap (calcTypeEnv . fst) . evalAbstract
 
 evalAbstract :: (Monad m, MonadFail m, MonadIO m) => Program -> m (TypeEnv, Cache)
 evalAbstract prog = do

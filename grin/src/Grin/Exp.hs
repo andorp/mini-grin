@@ -43,6 +43,7 @@ data External
   { eName       :: Name
   , eRetType    :: Ty
   , eArgsType   :: [Ty]
+  , eEffectful  :: Bool
   }
   deriving (Eq, Ord, Show)
 

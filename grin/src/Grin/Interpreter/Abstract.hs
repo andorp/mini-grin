@@ -426,8 +426,8 @@ fixCache eval0 e = do
     void $ localCacheIn cin $ eval0 e
     getCacheOut
 
-typeInference :: (Monad m, MonadFail m, MonadIO m) => Program -> m TypeEnv
-typeInference = fmap fst . evalAbstract
+typeInference :: (Monad m, MonadFail m, MonadIO m) => Program -> m Grin.TypeEnv
+typeInference = fmap (calcTypeEnv . fst) . evalAbstract
 
 evalAbstract :: (Monad m, MonadFail m, MonadIO m) => Program -> m (TypeEnv, Cache)
 evalAbstract prog = do
@@ -451,26 +451,6 @@ evalAbstract prog = do
     prim_int_eq     = (ST ST_Bool,  [ST ST_Int64, ST ST_Int64])
     prim_int_gt     = (ST ST_Bool,  [ST ST_Int64, ST ST_Int64])
     prim_int_print  = (UT, [ST ST_Int64])
-
-{-
-runAdd :: IO ()
-runAdd = do
-  (typeEnv, _cache) <- evalAbstractOne add
-  print $ PP typeEnv
-  print $ PP $ calcTypeEnv typeEnv
-
-runFact :: IO ()
-runFact = do
-  (typeEnv, _cache) <- evalAbstractOne fact
-  print $ PP typeEnv
-  print $ PP $ calcTypeEnv typeEnv
-
-runSum :: IO ()
-runSum = do
-  (typeEnv, _cache) <- evalAbstractOne sumSimple
-  print $ PP typeEnv
-  print $ PP $ calcTypeEnv typeEnv
--}
 
 -- * Convert Abstract.TypeEnv to Grin.TypeEnv
 
