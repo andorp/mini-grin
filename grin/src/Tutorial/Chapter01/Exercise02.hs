@@ -90,6 +90,9 @@ svalueOf name = do
 alloc :: Interpreter IO Address
 alloc = gets Store.size
 
+deref :: Address -> Interpreter IO Node
+deref addr = gets (Store.lookup addr)
+
 
 
 
@@ -127,11 +130,17 @@ eval ctx = \case
 
   -- Fetch a value from the heap, addressed by
   -- the memory location stored in the variable h.
-  SFetch h -> error "TODO"
+  SFetch h -> do
+    SLoc addr <- svalueOf h
+    Node <$> deref addr
 
   -- Update the value of the memory location h
   -- with the stored value n.
-  SUpdate h n -> error "TODO"
+  SUpdate h n -> do
+    SLoc addr <- svalueOf h
+    Node node <- valueOf n
+    modify (Store.insert addr node)
+    pure Unit
 
   -- Evaluate the left hand side, ignore the value,
   -- and evaluate the right hand side.
@@ -142,7 +151,9 @@ eval ctx = \case
   -- Evaluate the left hand side, bind its value to the variable x
   -- extending the environment, then evaluate the right hand side
   -- Corresponds to the bind: lhs >>= \pattern -> rhs
-  EBind lhs (BVar x) rhs -> error "TODO"
+  EBind lhs (BVar x) rhs -> do
+    val <- eval ctx lhs
+    local (Env.insert [(x, val)]) (eval ctx rhs)
 
   -- Evaluate the left hand side, bind its value to the pattern
   -- if the node value match the given pattern, otherwise the behaviour
