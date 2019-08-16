@@ -5,6 +5,7 @@ module Tutorial.Chapter01.Exercise02 where
 import Data.Int
 import Data.Word
 import Data.Maybe
+import Data.Monoid (First(..))
 import Grin.Exp
 import Control.Monad.Fail
 import Control.Monad.Reader
@@ -61,7 +62,7 @@ data SValue
   | SLoc    Address
   deriving (Eq, Ord, Show)
 
-data Node = N { tag :: Grin.Tag, fields :: [SValue] }
+data Node = N { nodeTag :: Grin.Tag, nodeFields :: [SValue] }
   deriving (Eq, Show)
 
 data Value       -- A runtime value can be:
@@ -158,15 +159,22 @@ eval ctx = \case
   -- Evaluate the left hand side, bind its value to the pattern
   -- if the node value match the given pattern, otherwise the behaviour
   -- is undefined.
-  EBind lhs (BNodePat t xs) rhs -> error "TODO"
+  EBind lhs (BNodePat t xs) rhs -> do
+    val <- eval ctx lhs
+    let Just bindings = matchNode val (t, xs)
+    local (Env.insert bindings) (eval ctx rhs)
 
   -- Evaluate the variable x and select the the matching alternatives to the
   -- to the value, similar how the pattern matching happened in the EBind,
   -- use your intuition.
   ECase x alts -> do
     v <- valueOf x
-    let selectedAlt = (error "TODO") v alts
-    eval ctx selectedAlt
+    let mkCont (Alt pat cont) = case matchPattern v pat of
+          Just bindings -> Just (local (Env.insert bindings) (eval ctx cont))
+          Nothing -> Nothing
+        mkCont other = error ("eval: not an Alt: " <> show other)
+    let Just selectedAlt = getFirst (foldMap (First . mkCont) alts)
+    selectedAlt
 
   -- Ignore the pattern in the Alt and evaluate the body
   Alt _apat body -> eval ctx body
@@ -186,10 +194,39 @@ eval ctx = \case
 
   overGenerative -> error $ show overGenerative
 
+matchPattern :: Value -> CPat -> Maybe [(Grin.Name, Value)]
+matchPattern = curry $ \case
+  (Prim prim, LitPat litPat) ->
+    if matchSimpleValue prim litPat
+      then Just []
+      else Nothing
 
+  (val, NodePat tag fields) ->
+    matchNode val (tag, fields)
 
+  (_, DefaultPat) ->
+    Just []
 
+  (_, _) ->
+    Nothing
 
+matchNode :: Value -> (Grin.Tag, [Grin.Name]) -> Maybe [(Grin.Name, Value)]
+matchNode (Node (N tag fields)) (patTag, patFields)
+  | tag == patTag && length fields == length patFields
+  = Just (zip patFields (map Prim fields))
+
+matchNode _ _
+  = Nothing
+
+matchSimpleValue :: SValue -> Grin.SimpleValue -> Bool
+matchSimpleValue = curry $ \case
+  (SInt64 x, Grin.SInt64 y)   -> x == y
+  (SWord64 x, Grin.SWord64 y) -> x == y
+  (SFloat x, Grin.SFloat y)   -> x == y
+  (SBool x, Grin.SBool y)     -> x == y
+  (SString x, Grin.SString y) -> x == y
+  (SChar x, Grin.SChar y)     -> x == y
+  _ -> False
 
 
 
