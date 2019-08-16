@@ -80,6 +80,6 @@ type IsExp c cs = Elem c cs cs
 type family Elem (c :: ExpCtx) (xs :: [ExpCtx]) (cs :: [ExpCtx]) :: Constraint where
   Elem c xs (c : _)  = ()
   Elem c xs (d : cs) = Elem c xs cs
-  Elem c xs '[]      = TypeError (Text "Expected expression type " :<>: ShowType xs
-                                  :$$:
-                                  Text "but got " :<>: ShowType c)
+  Elem c xs '[]      = TypeError ('Text "Expected expression type " ':<>: 'ShowType xs
+                                  ':$$:
+                                  'Text "but got " ':<>: 'ShowType c)
