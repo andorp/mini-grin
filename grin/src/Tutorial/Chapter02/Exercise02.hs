@@ -8,7 +8,6 @@ import Control.Monad.Logic hiding (fail)
 import Control.Monad.Reader (MonadReader(..))
 import Control.Monad.State (MonadState(..))
 import Data.Maybe
-import Data.Monoid (First(..))
 import Data.Function (fix)
 import Grin.Exp
 import qualified Grin.TypeEnv as Grin
@@ -66,9 +65,12 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
 
   evalCase :: (Exp -> AbstractT m T) -> T -> [Alt] -> AbstractT m T
   evalCase ev0 val alts =
-    case getFirst (foldMap (First . mkCont) alts) of
-      Nothing -> error ("evalCase: no matching pattern: " <> show val)
-      Just cont -> cont
+    -- why forMonadPlus here?
+    -- I thought we have a concrete `T` that will only take the first matching pattern
+    forMonadPlus alts $ \a ->
+      case mkCont a of
+        Nothing -> mzero
+        Just cont -> cont
 
     where
       mkCont (Alt pat cont) = case matchPattern val pat of
