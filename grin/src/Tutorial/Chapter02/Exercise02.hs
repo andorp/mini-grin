@@ -24,7 +24,7 @@ import qualified Data.Set as Set; import Data.Set (Set)
 import qualified Grin.Value as Grin
 
 import Grin.Interpreter.Abstract
-  ( AbstractT, Cache, TypeEnv, T(..), ST(..), Loc(..), AbsStore(..), AbsEnv(..), AbsState(..), Node(..)
+  ( AbstractT, Cache, TypeEnv, T(..), ST(..), Loc(..), AbsStore, AbsEnv(..), AbsState(..), Node(..)
   , evalCache, fixCache, runAbstractT, absStr, appendFunOut, absEnv, appendEnvOut, typeOfSimpleValue, calcTypeEnv
   )
 import Tutorial.Chapter01.Exercise02 as Exercise (grinMain)
@@ -59,10 +59,10 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
     forMonadPlus (Set.toList $ Store.lookup a s) heapVal2val
 
   bindPattern :: T -> (Tag, [Name]) -> AbstractT m [(Name, T)]
-  bindPattern t (tag,ps) = error "TODO"
+  bindPattern _t (_tag, _ps) = error "TODO"
 
   evalCase :: (Exp -> AbstractT m T) -> T -> [Alt] -> AbstractT m T
-  evalCase ev0 v alts = error "TODO"
+  evalCase _ev0 _v _alts = error "TODO"
 
   extStore :: T -> T -> AbstractT m ()
   extStore v0 v1 = do
