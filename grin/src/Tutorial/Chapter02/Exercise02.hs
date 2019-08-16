@@ -8,6 +8,7 @@ import Control.Monad.Logic hiding (fail)
 import Control.Monad.Reader (MonadReader(..))
 import Control.Monad.State (MonadState(..))
 import Data.Maybe
+import Data.Monoid (First(..))
 import Data.Function (fix)
 import Grin.Exp
 import qualified Grin.TypeEnv as Grin
@@ -59,10 +60,23 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
     forMonadPlus (Set.toList $ Store.lookup a s) heapVal2val
 
   bindPattern :: T -> (Tag, [Name]) -> AbstractT m [(Name, T)]
-  bindPattern _t (_tag, _ps) = error "TODO"
+  bindPattern t pat = case matchNode t pat of
+    Just x -> pure x
+    Nothing -> error ("bindPattern: pattern failed: " <> show (t, pat))
 
   evalCase :: (Exp -> AbstractT m T) -> T -> [Alt] -> AbstractT m T
-  evalCase _ev0 _v _alts = error "TODO"
+  evalCase ev0 val alts =
+    case getFirst (foldMap (First . mkCont) alts) of
+      Nothing -> error ("evalCase: no matching pattern: " <> show val)
+      Just cont -> cont
+
+    where
+      mkCont (Alt pat cont) = case matchPattern val pat of
+        Just bindings -> Just $ do
+          env <- askEnv
+          localEnv (Env.insert bindings env) (ev0 cont)
+        Nothing -> Nothing
+      mkCont _ = error "evalCase: not an alternative"
 
   extStore :: T -> T -> AbstractT m ()
   extStore v0 v1 = do
@@ -159,7 +173,37 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
 
 
 
+matchPattern :: T -> CPat -> Maybe [(Name, T)]
+matchPattern = curry $ \case
+  (ST simple, LitPat litPat) ->
+    if matchSimpleValue simple litPat
+      then Just []
+      else Nothing
+  (val, NodePat tag fields) ->
+    matchNode val (tag, fields)
+  (_, DefaultPat) ->
+    Just []
+  (_, _) ->
+    Nothing
 
+matchNode :: T -> (Tag, [Name]) -> Maybe [(Name, T)]
+matchNode (NT (Node tag fields)) (patTag, patFields)
+  | tag == patTag && length fields == length patFields
+  = Just (zip patFields (map ST fields))
+matchNode _ _
+  = Nothing
+
+
+
+matchSimpleValue :: ST -> SimpleValue -> Bool
+matchSimpleValue = curry $ \case
+  (ST_Int64,  SInt64 _)  -> True
+  (ST_Word64, SWord64 _) -> True
+  (ST_Float,  SFloat _)  -> True
+  (ST_Bool,   SBool _)   -> True
+  (ST_String, SString _) -> True
+  (ST_Char,   SChar _)   -> True
+  _ -> False
 
 
 
