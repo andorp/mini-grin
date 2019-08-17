@@ -1,9 +1,15 @@
 {-# LANGUAGE DataKinds, GADTs, KindSignatures, PolyKinds, TypeFamilies, TypeOperators, RankNTypes, LambdaCase, ConstraintKinds, UndecidableInstances #-}
-module Grin.GExp where
+module Grin.GExp
+  ( module Grin.GExp
+  , module Grin.Exp
+  , module Grin.Value
+  , module Grin.TypeEnv
+  ) where
 
 import Data.Kind (Constraint)
-import Grin.Exp (BPat, CPat, External)
+import Grin.Exp (BPat(..), CPat(..), External(..))
 import Grin.Value
+import Grin.TypeEnv
 import GHC.TypeLits
 
 
@@ -80,6 +86,6 @@ type IsExp c cs = Elem c cs cs
 type family Elem (c :: ExpCtx) (xs :: [ExpCtx]) (cs :: [ExpCtx]) :: Constraint where
   Elem c xs (c : _)  = ()
   Elem c xs (d : cs) = Elem c xs cs
-  Elem c xs '[]      = TypeError (Text "Expected expression type " :<>: ShowType xs
-                                  :$$:
-                                  Text "but got " :<>: ShowType c)
+  Elem c xs '[]      = TypeError ('Text "Expected expression type " ':<>: 'ShowType xs
+                                  ':$$:
+                                  'Text "but got " ':<>: 'ShowType c)
