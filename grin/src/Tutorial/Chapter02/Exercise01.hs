@@ -13,14 +13,30 @@ import qualified Grin.Interpreter.Env as Env
 import qualified Grin.Value as Grin
 
 {-
+Motivation:
+The talk is based on the Abstracting Definitional Interpreters [1].
+
+In this paper the claim that the same structure for the definitional
+interpreter can be reused to create abstract interpreters which
+are some form of inference. We will see that type inference
+can be encoded using abstract interpretation.
+
+The main motivation here is to understand how the abstraction of
+the definitional interpreter can be achieved.
+
+The paper uses open recursion technique to make possible to inject
+different aspects of the recursive calls.
+
+This approach is also used in the `semantic` framework by github [2].
+
+[1] https://plum-umd.github.io/abstracting-definitional-interpreters/
+[2] https://github.com/github/semantic
+
+
 Exercise:
 Find the difference between the interpreter from the previous exercise.
 Change the types in the Interpreter to make compile eval interpreter.
 -}
-
-
-
-
 
 eval  :: (MonadIO m, Interpreter m, a ~ Addr m, v ~ Val m, Show v)
     => (Exp -> m (Val m)) -> Exp -> m (Val m)
@@ -85,28 +101,27 @@ eval ev0 = \case
   overGenerative -> error $ show overGenerative
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 -- * Type class
+
+type Todo m = m ()
 
 -- Change the types in this typeclass to make compile the ev interpreter above
 class (Monad m, MonadFail m) => Interpreter m where
-  type Val          m :: * -- ^ Values that can be placed in registers/variables
+  type Val          m :: * -- ^ Values that can be placed in variables
   type HeapVal      m :: * -- ^ Values that can be stored on the heap
-  type StoreVal     m :: * -- ^ Heap where heap values can be stored (like malloc)
+  type StoreVal     m :: * -- ^ A collection of values that can come the HeapVal type
   type Addr         m :: * -- ^ A type to represent Addresses
   type NewStoreInfo m :: * -- ^ When creating a new store location this information helps
                            --   to distinguis between different stores.
+
+  -- Exercise: Try to figure out the types of the by yourself based on the interpreter
+  -- defined in the previous exercise and 'eval' function in this module.,
+  -- using the following method:
+  --
+  -- Replace the type of a function with `Todo m` and follow the type error.
+  -- The more you can figure out in the given time the better.
+  --
+  -- The solutions are at the end of this module.
 
   -- Conversions, but m type is needed for type inference
   literal     :: Literal_ m     -- ^ Convert a literal value to an value of the interpretation
