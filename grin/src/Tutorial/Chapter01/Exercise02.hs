@@ -20,43 +20,57 @@ import qualified Data.Map.Strict as Map
 
 {-
 Motivation:
-To give a language a meaning one could write an interpreter.
+To give a language meaning one could write an interpreter.
 
 Using the interpreter we can define the operational semantics
-of a language, showing how a language describe the process of
-state changes of an abstract domain.
+of a language. The interpreter can also be regarded as a state
+transition system over a given abstract domain.
 
 This approach is called the DEFINITIONAL INTERPRETER.
 
 Our domain consist of
   * an Environment, which associates variables with values, AND
-  * a Store (Heap) which represents the memory of a machine. The
+  -- NOTE: consider renamind Store -> (Abstract) Heap [to avoid confusion about store operation]
+  * a Store (Heap) which represents the memory of the machine. The
     store associates heap locations (Addresses) with values.
 
 Exercise: Read the Grin.Interpreter.Env module
 Exercise: Read the Grin.Interpreter.Store module
 
-Note:
-In GRIN variables are Static Single Assignment,
-which means rebind of a variable should be illegal.
-
 During the interpretation
- * The environment associated variables with values
-   of Primitive types (SValue), Node types and Unit which can be created
-   of an Update operation or a result of an effectful external operation.
- * The store can only hold Node values, which are structured values.
-   (In the GRIN terminology a Node represents a Graph-Node in the memory. Using this
-   approach functional language programs can be represented in memory
-   as a graph, which needs to be reduced somehow. Thus only Node values
-   can be stored on the HEAP)
+ * The environment associates variables with values
+   which can be of three types:
+    * Primitive (SValue)
+    * Node
+    * Unit
+   Values of type Unit can be created by an Update operation,
+   or an effectful external operation.
+ * The store can only hold Node values (similar to C-style structs)
 
-Exercise: Read the definition of Value, Node and SValue types. These types do represent
+Note:
+GRIN programs are in Static Single Assignment form,
+which means rebinding a variable is illegal.
+
+
+-- NOTE: extract this to somewhere in the beginning
+GRIN stands for Graph Reduction Intermediate Notation, and is
+a compiler back end for functional languages. As its name
+suggests, GRIN can be used to express graph reduction semantics
+and hence can be used to compile functional languages.
+
+In GRIN, a node in the graph is represented as a C-stlye struct.
+The Heap can only contain Node values and nothing else.
+These Node values stored on the Heap are the nodes of the functional program's
+graph. The reduction of this graph is done through the primitive
+heap operations of GRIN (store, fetch, update).
+
+Exercise: Read the definition of Value, Node and SValue types below. These types represent
 values in a running interpreter.
 -}
 
 data Value       -- A runtime value can be:
-  = Prim SValue  -- A primitive value aks simple value
-  | Node Node    -- A node value which represent a node in the graph
+  = Prim SValue  -- A primitive value as simple value
+  | Node Node    -- A node value which represents a node in the graph
   | Unit         -- The UNIT value, which represents no information at all. Like () in Haskell.
   deriving (Eq, Show)
 
@@ -72,32 +86,20 @@ data SValue
   | SLoc    Address
   deriving (Eq, Ord, Show)
 
-{-
-During the run of the interpeter it needs a context to operate with.
-This context gives the ability to the interpreter to call (via the SApp)
-the external functions, which mainly represent system/OS functions (externalCall)
-
-Also it needs to know all the defined functions of a program to be
-able to load the functions (defined by Def) when they are called
-via the SApp primitive.
--}
-
-data Context = Context
-  { externalCall :: Grin.Name -> [Value] -> IO Value
-  , functions    :: Map.Map Grin.Name Exp
-  }
-
+-- | For simplicity's sake, we will represent addresses using Ints.
+type Address = Int
 
 {-
 The structure of the interpreter can be represented as a Monad Transformer, which
-operated on a given 'm' Monad, which can run arbitrary IO computations.
+operates on a given 'm' Monad, which can run arbitrary IO computations.
 
 The Env represents the frame, which holds values for variables. The MonadReader abstraction
 fits well with the frame abstraction.
 
-The Store associates Addresses with Node values, during the program run the content
-of an address may change.
- * A new address is allocated using the Store operation, which creates a new store
+-- NOTE: name of operations first
+The Store associates Addresses with Node values, during the execution of the program,
+contents of the heap location associated with the given address can change.
+ * A new address is allocated using the Store operation, which creates a new heap
    location saves the value of which was given to the Store operation via a variable
    which value must be looked up from the Env.
    The store operation returns the newly created address.
@@ -106,8 +108,8 @@ of an address may change.
  * The content of an address can be overwritten using the Update operation.
 -}
 
-type Address = Int
-
+-- NOTE: Reader env can change
+-- NOTE: IO is neeed to call externals
 newtype Interpreter m a = Interpreter (RWST (Env Value) () (Store Address Node) m a)
   deriving  ( Functor
             , Applicative
@@ -118,16 +120,34 @@ newtype Interpreter m a = Interpreter (RWST (Env Value) () (Store Address Node) 
             , MonadFail
             )
 
+{-
+During the execution of a GRIN program, the interpeter
+needs a context to interpret function calls.
+
+Firstly, it needs to know all the functions defined in the GRIN program.
+
+Furthermore, it needs to know how to call external functions (system/OS functions).
+This is accomplished by `externalCall`. This function will be used to interpret
+external function calls (in SApp). Given an external function's name, and the
+actual arguments to the call, it calls the corresponding system/OS function.
+-}
+
+-- NOTE: more descriptive name
+data Context = Context
+  { functions    :: Map.Map Grin.Name Exp
+  , externalCall :: Grin.Name -> [Value] -> IO Value
+  }
+
 type InterpretExternal = Grin.Name -> [Value] -> IO Value
 
 -- The interpreter function gets how to interpret the external functions,
--- a program to interpret and returns a computed value.
+-- a program to interpret, and returns a computed value.
 --
--- It collects the function definitions from the program
--- Loads the body of the main function and starts to evaluate that expression.
+-- It collects the function definitions from the program,
+-- loads the body of the main function and starts to evaluate that expression.
 interpreter :: InterpretExternal -> Program -> IO Value
-interpreter ietx prog =
-    fst <$> runInterpreter (eval (Context ietx (programToDefs prog)) (grinMain prog))
+interpreter iext prog =
+    fst <$> runInterpreter (eval (Context (programToDefs prog) iext) (grinMain prog))
   where
     runInterpreter
       :: (Monad m, MonadIO m)
