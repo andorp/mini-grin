@@ -46,7 +46,6 @@ data SimpleValue
   | SWord64 Word64
   | SFloat  Float
   | SBool   Bool
-  | SString String
   | SChar   Char
   deriving (Generic, Data, Eq, Ord, Show)
 
@@ -98,7 +97,6 @@ instance Pretty SimpleValue where
     SWord64 a  -> integer (fromIntegral a) <> text "u"
     SFloat a   -> float a
     SBool a    -> text "#" <> text (show a)
-    SString a  -> text "#" <> text (show a)
     SChar a    -> text "#" <> text (show a)
 
 instance Pretty TagType where

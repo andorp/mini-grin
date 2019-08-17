@@ -20,10 +20,10 @@ data SimpleType
   | T_Word64
   | T_Float
   | T_Bool
-  | T_Unit
-  | T_Location {_locations :: [Loc]}
-  | T_String
   | T_Char
+
+  | T_Location {_locations :: [Loc]}
+  | T_Unit
   deriving (Eq, Ord, Show)
 
 type NodeSet = Map Tag [SimpleType]

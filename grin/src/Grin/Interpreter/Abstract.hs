@@ -40,7 +40,6 @@ data ST
   | ST_Word64
   | ST_Float
   | ST_Bool
-  | ST_String
   | ST_Char
   | ST_Loc Loc
   deriving (Eq, Ord, Show)
@@ -249,7 +248,6 @@ typeOfSimpleValue = \case
   Grin.SWord64 _ -> ST ST_Word64
   Grin.SFloat  _ -> ST ST_Float
   Grin.SBool   _ -> ST ST_Bool
-  Grin.SString _ -> ST ST_String
   Grin.SChar   _ -> ST ST_Char
 
 -- Chapter 2: Fill out the missing definitions that the 3 test pass
@@ -466,7 +464,6 @@ stToSimpleType ml = \case
   ST_Word64 -> T_Word64
   ST_Float  -> T_Float
   ST_Bool   -> T_Bool
-  ST_String -> T_String
   ST_Char   -> T_Char
   ST_Loc l  -> T_Location [ml Map.! l]
 

@@ -32,7 +32,6 @@ data SVal
   | SWord64 Word64
   | SFloat  Float
   | SBool   Bool
-  | SString String
   | SChar   Char
   | SLoc    Loc
   deriving (Eq, Ord, Show)
@@ -43,7 +42,6 @@ simpleValue = \case
   Grin.SWord64 w -> SWord64 w
   Grin.SFloat  f -> SFloat f
   Grin.SBool   b -> SBool b
-  Grin.SString s -> SString s
   Grin.SChar   c -> SChar c
 
 data Node = Node Tag [SVal]
