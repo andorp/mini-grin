@@ -8,7 +8,16 @@ import Grin.TypeEnv
 
 -- * Test expression
 
+-- NOTE: explain data ctors, explain every first example
+-- NOTE: explicit imports
+-- NOTE: smaller example to demostrate heap operations
+-- NOTE: emphasize GADTs
+
+-- TODO: investigate pretty (why doesn't it print primops)
 {-
+primop pure
+  prim_int_add :: T_Int64 -> T_Int64 -> T_Int64
+
 add s1 s2 =
   s3 <- prim_int_add $ s1 s2
   pure s3
@@ -22,6 +31,7 @@ main =
 add :: Exp 'Prg
 add =
   Program
+    -- type signatures of external functions must be provided at the top of teh module
     [ External "prim_int_add" (TySimple T_Int64) [TySimple T_Int64, TySimple T_Int64] False
     ]
     [ Def "add" ["s1", "s2"] $
@@ -36,6 +46,14 @@ add =
 -- * Factorial
 
 {-
+primop pure
+  prim_int_sub   :: T_Int64 -> T_Int64 -> T_Int64
+  prim_int_mul   :: T_Int64 -> T_Int64 -> T_Int64
+  prim_int_eq    :: T_Int64 -> T_Int64 -> T_Bool
+
+ffi effectful
+  prim_int_print :: T_Int64 -> T_Unit
+
 fact f1 =
   f2 <- pure 0
   f3 <- prim_int_eq $ f1 f2

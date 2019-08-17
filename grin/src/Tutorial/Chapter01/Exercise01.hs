@@ -7,28 +7,30 @@ import qualified Grin.Exp  as E (Exp(..))
 import Grin.GExp (Exp(..))
 
 {-
-The GRIN is a simple language. The GRIN programs consist of
+The GRIN is a simple language. GRIN programs consist of
  * creating values via Pure or funtion application App
- * binding values to variables using patterns
- * branching control flow is done via case alternatives
-   which selects the first from the alternatives that
-   match a value in the scrutinee
- * Only structured/boxed values can be stored on a heap,
-   which are called Node values
- * Operations of the heap are Store a Node value,
-   Fetch a Node value from the heap, Update a Node value
-   on a heap location.
+ * binding values to variables
+ * branching control flow via case expressions
+ * manipulating the heap through certain heap operations
 
-Exercise:
-Open the Grin.Examples module and take a look at the
-three examples to build an intuition about the GRIN language
-and about the GADT represented syntax.
+Only structured/boxed values can be stored on the heap,
+these are called Node values.
+
+There three drifferent heap operations:
+  * Store a Node value on the heap
+  * Fetch a Node value from the heap
+  * Update a Node value on the heap through a pointer
 
 Motivation:
 It is good to have a type safe GADT representation of the
 GRIN language which restricts some constructions,
 but it is easier to handle a simple ADT represented
-program in transformation and analysises.
+program in transformation and analyses.
+
+Exercise:
+Open the Grin.Examples module and take a look at the
+three examples to build an intuition about the GRIN language
+and about the GADT represented syntax.
 
 Exercise:
 Check the cheatsheet about the GRIN values.
