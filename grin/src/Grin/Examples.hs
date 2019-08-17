@@ -8,6 +8,17 @@ import Grin.TypeEnv
 
 -- * Test expression
 
+{-
+add s1 s2 =
+  s3 <- prim_int_add $ s1 s2
+  pure s3
+
+main =
+  m1 <- pure 10
+  m2 <- pure 20
+  add $ m1 m2
+-}
+
 add :: Exp 'Prg
 add =
   Program
@@ -21,6 +32,29 @@ add =
         Bind (Pure (Lit (LVal (SInt64 20)))) (BVar "m2") $
         App "add" ["m1", "m2"]
     ]
+
+-- * Factorial
+
+{-
+fact f1 =
+  f2 <- pure 0
+  f3 <- prim_int_eq $ f1 f2
+  case f3 of
+    #True ->
+      f7 <- pure 1
+      pure f7
+    #False ->
+      f4 <- pure 1
+      f5 <- prim_int_sub $ f1 f4
+      f6 <- fact $ f5
+      prim_int_mul $ f1 f6
+
+main =
+  m1 <- pure 10
+  m2 <- fact $ m1
+  prim_int_print $ m2
+  pure m2
+-}
 
 fact :: Exp 'Prg
 fact =
@@ -49,6 +83,74 @@ fact =
         Bind (App "prim_int_print" ["m2"]) BUnit $
         Pure (Var "m2")
     ]
+
+-- * Sum simple
+
+{-
+main =
+  m1 <- pure 1
+  m2 <- pure 100
+  m3 <- pure (CInt m1)
+  m4 <- pure (CInt m2)
+  m5 <- store m3
+  m6 <- store m4
+  m7 <- pure (Fupto m5 m6)
+  m8 <- store m7
+  m9 <- pure (Fsum m8)
+  m10 <- store m9
+  (CInt m11) <- eval $ m10
+  prim_int_print $ m11
+
+upto u1 u2 =
+  (CInt u3) <- eval $ u1
+  (CInt u4) <- eval $ u2
+  u5 <- prim_int_gt $ u3 u4
+  case u5 of
+    #True ->
+      u12 <- pure (CNil)
+      pure u12
+    #False ->
+      u6 <- pure 1
+      u7 <- prim_int_add $ u3 u6
+      u8 <- pure (CInt u7)
+      u9 <- store u8
+      u10 <- pure (Fupto u9 u2)
+      u11 <- store u10
+      pure (CCons u1 u11)
+
+sum s1 =
+  s2 <- eval $ s1
+  case s2 of
+    (CNil) ->
+      s3 <- pure 0
+      pure (CInt s3)
+    (CCons s5 s6) ->
+      (CInt s7) <- eval $ s5
+      (CInt s8) <- sum $ s6
+      s9 <- prim_int_add $ s7 s8
+      pure (CInt s9)
+
+eval e1 =
+  e2 <- fetch e1
+  case e2 of
+    (CInt e3) ->
+      e11 <- pure (CInt e3)
+      pure e11
+    (CNil) ->
+      e12 <- pure (CNil)
+      pure e12
+    (CCons e4 e5) ->
+      e13 <- pure (CCons e4 e5)
+      pure e13
+    (Fupto e6 e7) ->
+      e8 <- upto $ e6 e7
+      update e1 e8
+      pure e8
+    (Fsum e9) ->
+      e10 <- sum $ e9
+      update e1 e10
+      pure e10
+-}
 
 sumSimple :: Exp 'Prg
 sumSimple =
