@@ -30,13 +30,18 @@ instance Monoid Info where
   mempty = Names mempty
 
 
+-- NOTE: use this instead of mconcat, also remember to add SAppF
+mconcat1 :: Semigroup m => [m] -> m
+mconcat1 = foldl1 (<>)
+
 collectNonUsedParams :: Exp -> Info
 collectNonUsedParams = cata $ \case
-  ProgramF _exts infos -> mconcat infos
+  ProgramF _exts infos -> mconcat1 infos
 
   -- Exercise: Create a singleton map for the function name with the non-used parameters if there is any.
   DefF funName ps (Names used) -> NonUsedParam $ undefined ps used
 
+  -- NOTE: literal? also, Node literals?
   -- Exercise: Collect the names from the literal
   SPureF literal -> Names undefined
 
@@ -45,12 +50,12 @@ collectNonUsedParams = cata $ \case
   SUpdateF n1 n2  -> Names $ Set.fromList [n1,n2]
 
   EBindF lhs BUnit rhs    -> lhs <> rhs
-  EBindF lhs (BVar n) rhs -> mconcat [lhs, Names (Set.singleton n), rhs]
+  EBindF lhs (BVar n) rhs -> mconcat1 [lhs, Names (Set.singleton n), rhs]
 
   -- Exercise: Collect all the used names
   EBindF lhs (BNodePat _tag names) rhs -> undefined
 
-  ECaseF n alts -> mconcat $ Names (Set.singleton n) : alts
+  ECaseF n alts -> mconcat1 $ Names (Set.singleton n) : alts
   AltF _ body   -> body
 
 
