@@ -27,14 +27,12 @@ library
     Grin.Interpreter.Base
     Grin.Interpreter.Definitional
     Grin.Interpreter.Abstract
---    Transformations.Optimising.SimpleDeadFunctionElimination
---    Transformations.Optimising.SimpleDeadVariableElimination
---    Transformations.Optimising.SimpleDeadParameterElimination
---    Transformations.Optimising.SparseCaseOptimisation
     Tutorial.Chapter01.Exercise01
     Tutorial.Chapter01.Exercise02
     Tutorial.Chapter02.Exercise01
     Tutorial.Chapter02.Exercise02
+    Tutorial.Chapter03.Exercise01
+    Tutorial.Chapter03.Exercise02
 
   build-depends:
     base >=4.11,
@@ -84,6 +82,8 @@ test-suite grin-test
     Tutorial.Chapter01.Exercise02Spec
     Tutorial.Chapter02.Exercise01Spec
     Tutorial.Chapter02.Exercise02Spec
+    Tutorial.Chapter03.Exercise01Spec
+    Tutorial.Chapter03.Exercise02Spec
 
   default-language:    Haskell2010
 

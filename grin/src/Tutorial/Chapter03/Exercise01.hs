@@ -16,9 +16,11 @@ And than removes the parameters from the definitions and function calls.
 TODO: Explanation of the functor foldable library.
 -}
 
+type FunName = Name
+
 data Info
   = Names        { used :: Set.Set Name }
-  | NonUsedParam { nonUsedParams :: Map.Map Name [(Name, Int)] }
+  | NonUsedParam { nonUsedParams :: Map.Map FunName [(Name, Int)] }
 
 instance Semigroup Info where
   Names n1          <> Names n2         = Names (n1 <> n2)

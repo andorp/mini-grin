@@ -16,8 +16,29 @@ spec = do
     result `shouldBe` expected
 
 simpleProg :: Exp 'Prg
-simpleProg = undefined
+simpleProg =
+  Program
+    [ External "prim_int_add" (TySimple T_Int64) [TySimple T_Int64, TySimple T_Int64] False
+    ]
+    [ Def "main" [] $
+        Bind (Pure (Lit (LVal (SInt64 1)))) (BVar "m1") $
+        Bind (Pure (Lit (LVal (SInt64 2)))) (BVar "m2") $
+        App "something" ["m1", "m2"]
+    , Def "something" ["s1", "s2"] $
+        Bind (Pure (Lit (LVal (SInt64 1)))) (BVar "s3") $
+        App "prim_int_add" ["s1", "s3"]
+    ]
 
 exptectedProg :: Exp 'Prg
-exptectedProg = undefined
-
+exptectedProg =
+  Program
+    [ External "prim_int_add" (TySimple T_Int64) [TySimple T_Int64, TySimple T_Int64] False
+    ]
+    [ Def "main" [] $
+        Bind (Pure (Lit (LVal (SInt64 1)))) (BVar "m1") $
+        Bind (Pure (Lit (LVal (SInt64 2)))) (BVar "m2") $
+        App "something" ["m1"]
+    , Def "something" ["s1"] $
+        Bind (Pure (Lit (LVal (SInt64 1)))) (BVar "s3") $
+        App "prim_int_add" ["s1", "s3"]
+    ]
