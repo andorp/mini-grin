@@ -134,11 +134,11 @@ instance (Applicative m, Monad m, MonadFail m) => Interpreter (DefinitionalT m) 
   lookupFun :: Name -> (DefinitionalT m) Exp
   lookupFun funName = (fromMaybe (error $ "Missing:" ++ show funName) . Map.lookup funName . _defFuns) <$> ask
 
-  isOperation :: Name -> (DefinitionalT m) Bool
-  isOperation funName = (Map.member funName . _defOps) <$> ask
+  isExternal :: Name -> (DefinitionalT m) Bool
+  isExternal funName = (Map.member funName . _defOps) <$> ask
 
-  operation :: Name -> [DVal] -> (DefinitionalT m) DVal
-  operation funName params = DefinitionalT $ do
+  external :: Name -> [DVal] -> (DefinitionalT m) DVal
+  external funName params = DefinitionalT $ do
     op <- lift ((fromJust . Map.lookup funName . _defOps) <$> ask)
     lift (lift (op params))
 
@@ -171,9 +171,6 @@ instance (Applicative m, Monad m, MonadFail m) => Interpreter (DefinitionalT m) 
 
   getStore :: DefinitionalT m (Store Loc Node)
   getStore = DefinitionalT get
-
-  putStore :: Store Loc Node -> DefinitionalT m ()
-  putStore s = state (\_ -> ((), s))
 
   updateStore :: (Store Loc Node -> Store Loc Node) -> DefinitionalT m ()
   updateStore f = state (\s -> ((), f s))

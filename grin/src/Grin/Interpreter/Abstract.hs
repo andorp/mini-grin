@@ -22,6 +22,7 @@ import Grin.Interpreter.Store
 import Grin.Pretty hiding (SChar)
 import Lens.Micro.Platform
 import Prelude hiding (fail)
+import Grin.GExpToExp (gexpToExp)
 
 import Grin.Interpreter.Store (Store)
 import qualified Grin.Interpreter.Store as Store
@@ -33,6 +34,7 @@ import qualified Data.Set as Set; import Data.Set (Set)
 import qualified Grin.TypeEnv as Grin
 import qualified Grin.Value as Grin
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
+import qualified Grin.Examples as Examples
 
 
 data ST
@@ -310,13 +312,13 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
   lookupFun :: Name -> AbstractT m Exp
   lookupFun fn = (fromMaybe (error $ unwords ["lookupFun", Grin.nameString fn]) . Map.lookup fn . _absFun) <$> ask
 
-  isOperation :: Name -> AbstractT m Bool
-  isOperation n = (Map.member n . _absOps) <$> ask
+  isExternal :: Name -> AbstractT m Bool
+  isExternal n = (Map.member n . _absOps) <$> ask
 
-  operation :: Name -> [T] -> AbstractT m T
-  operation n ps = do
+  external :: Name -> [T] -> AbstractT m T
+  external n ps = do
     (r,ts) <- (fromJust . Map.lookup n . _absOps) <$> ask
-    when (ps /= ts) $ error $ unwords ["operation", Grin.nameString n, show ps, show ts]
+    when (ps /= ts) $ error $ unwords ["external", Grin.nameString n, show ps, show ts]
     appendFunOut (n,ts,r)
     pure r
 
@@ -352,9 +354,6 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
   getStore :: AbstractT m AbsStore
   getStore = _absStr <$> Control.Monad.State.get
 
-  putStore :: AbsStore -> AbstractT m ()
-  putStore = (absStr .=)
-
   updateStore :: (AbsStore -> AbsStore) -> AbstractT m ()
   updateStore = (absStr %=)
 
@@ -379,6 +378,9 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
     n <- val2heapVal v1
     let changeElem x = (fmap (Set.insert n) x) `mplus` (Just (Set.singleton n))
     updateStore (\(Store m) -> Store (Map.alter changeElem a m))
+
+putStore :: Interpreter m => Store (Addr m) (StoreVal m) -> m ()
+putStore o = updateStore (const o)
 
 evalCache
   :: (Monad m, MonadFail m, MonadIO m)
@@ -449,6 +451,14 @@ evalAbstract prog = do
     prim_int_eq     = (ST ST_Bool,  [ST ST_Int64, ST ST_Int64])
     prim_int_gt     = (ST ST_Bool,  [ST ST_Int64, ST ST_Int64])
     prim_int_print  = (UT, [ST ST_Int64])
+
+-- * Tests
+
+tests :: IO ()
+tests = do
+  print =<< (PP <$> (typeInference $ gexpToExp $ Examples.add))
+  print =<< (PP <$> (typeInference $ gexpToExp $ Examples.fact))
+  print =<< (PP <$> (typeInference $ gexpToExp $ Examples.sumSimple))
 
 -- * Convert Abstract.TypeEnv to Grin.TypeEnv
 

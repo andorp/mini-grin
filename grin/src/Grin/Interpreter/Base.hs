@@ -35,8 +35,8 @@ baseEval ev0 = \case
   SApp fn ps -> do
     p  <- askEnv
     vs <- pure $ map (Env.lookup p) ps
-    op <- isOperation fn
-    (if op then operation else funCall ev0) fn vs
+    ex <- isExternal fn
+    (if ex then external else funCall ev0) fn vs
 
   SFetch n -> do
     p <- askEnv
@@ -112,8 +112,8 @@ class (Monad m, MonadFail m) => Interpreter m where
   -- | Set the local environment
   localEnv      :: Env (Val m) -> m (Val m) -> m (Val m)
   lookupFun     :: Name -> m Exp
-  isOperation   :: Name -> m Bool                -- TODO: Rename it to external related
-  operation     :: Name -> [Val m] -> m (Val m)  -- TODO: Rename it to external related
+  isExternal    :: Name -> m Bool
+  external      :: Name -> [Val m] -> m (Val m)
   name2NewStoreInfo :: Name -> m (NewStoreInfo m)
 
   -- Control-flow
@@ -122,7 +122,6 @@ class (Monad m, MonadFail m) => Interpreter m where
 
   -- Store
   getStore      :: m (Store (Addr m) (StoreVal m))
-  putStore      :: (Store (Addr m) (StoreVal m)) -> m ()
   updateStore   :: (Store (Addr m) (StoreVal m) -> Store (Addr m) (StoreVal m)) -> m ()
   nextLocStore  :: NewStoreInfo m -> Store (Addr m) (StoreVal m) -> m (Addr m)
   allocStore    :: NewStoreInfo m -> m (Val m)
