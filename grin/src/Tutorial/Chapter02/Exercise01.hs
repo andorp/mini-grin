@@ -16,7 +16,7 @@ import qualified Grin.Value as Grin
 Motivation:
 The talk is based on the Abstracting Definitional Interpreters [1].
 
-In this paper the claim that the same structure for the definitional
+In this paper they claim that the same structure for the definitional
 interpreter can be reused to create abstract interpreters which
 are some form of inference. We will see that type inference
 can be encoded using abstract interpretation.
@@ -38,7 +38,7 @@ Find the difference between the interpreter from the previous exercise.
 Change the types in the Interpreter to make compile eval interpreter.
 -}
 
-eval  :: (MonadIO m, Interpreter m, a ~ Addr m, v ~ Val m, Show v)
+eval  :: (MonadIO m, Interpreter m)
     => (Exp -> m (Val m)) -> Exp -> m (Val m)
 eval ev0 = \case
   SPure (Lit l) -> literal l
@@ -108,9 +108,12 @@ type Todo m = m ()
 -- Change the types in this typeclass to make compile the ev interpreter above
 class (Monad m, MonadFail m) => Interpreter m where
   type Val          m :: * -- ^ Values that can be placed in variables
+  -- NOTE: HeapVal is the type of values that can be passed to store, fetch, update
   type HeapVal      m :: * -- ^ Values that can be stored on the heap
-  type StoreVal     m :: * -- ^ A collection of values that can come the HeapVal type
+  -- NOTE: StoreVal is the abstract value that can be stored on the heap (eg.: set of possible types)
+  type StoreVal     m :: * -- ^ A collection of values that can come from the HeapVal type
   type Addr         m :: * -- ^ A type to represent Addresses
+  -- NOTE: sure
   type NewStoreInfo m :: * -- ^ When creating a new store location this information helps
                            --   to distinguis between different stores.
 

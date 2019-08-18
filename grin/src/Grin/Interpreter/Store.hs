@@ -6,6 +6,7 @@ import qualified Data.Map.Strict as Map
 
 -- * Store
 
+-- | Store maps addresses to abstract values.
 newtype Store a v = Store (Map.Map a v)
   deriving (Eq, Ord, Show)
 
