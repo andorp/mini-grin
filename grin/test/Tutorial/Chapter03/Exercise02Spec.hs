@@ -23,11 +23,11 @@ before :: Exp 'Prg
 before = Program
   []
   [Def "main" [] $
-    Bind (Pure (Lit (LVal (SInt64 1)))) (BVar "m1") $
-    Bind (Pure (Lit (LNode (Node (Tag C "Index") ["m1"])))) (BVar "m2") $
+    Bind (Pure (Val (VPrim (SInt64 1)))) (BVar "m1") $
+    Bind (Pure (Val (VNode (Node (Tag C "Index") ["m1"])))) (BVar "m2") $
     Case "m2"
       [ Alt (NodePat (Tag C "None") []) $
-            Bind (Pure (Lit (LVal (SInt64 0)))) (BVar "m3") $
+            Bind (Pure (Val (VPrim (SInt64 0)))) (BVar "m3") $
             Pure (Var "m3")
       , Alt (NodePat (Tag C "Index") ["m4"]) $
             Bind (Pure (Var "m4")) (BVar "m5") $
@@ -42,8 +42,8 @@ after :: Exp 'Prg
 after =  Program
   []
   [Def "main" [] $
-    Bind (Pure (Lit (LVal (SInt64 1)))) (BVar "m1") $
-    Bind (Pure (Lit (LNode (Node (Tag C "Index") ["m1"])))) (BVar "m2") $
+    Bind (Pure (Val (VPrim (SInt64 1)))) (BVar "m1") $
+    Bind (Pure (Val (VNode (Node (Tag C "Index") ["m1"])))) (BVar "m2") $
     Case "m2"
       [ Alt (NodePat (Tag C "Index") ["m4"]) $
             Bind (Pure (Var "m4")) (BVar "m5") $

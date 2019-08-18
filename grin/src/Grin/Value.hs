@@ -53,20 +53,14 @@ data SimpleValue
 data Node = Node Tag [Name]
   deriving (Generic, Data, Eq, Ord, Show)
 
-data VarOrLit
-  = Var Name
-  | Lit Literal
-  deriving (Generic, Data, Eq, Ord, Show)
-
-data Literal
-  = LNode Node
-  | LVal  SimpleValue
-  deriving (Generic, Data, Eq, Ord, Show)
-
-data Val
+data Value
   = VNode Node
   | VPrim SimpleValue
-  | Unit
+  deriving (Generic, Data, Eq, Ord, Show)
+
+data VarOrValue
+  = Var Name
+  | Val Value
   deriving (Generic, Data, Eq, Ord, Show)
 
 instance Pretty Node where
@@ -75,21 +69,15 @@ instance Pretty Node where
 instance Pretty Name where
   pretty = text . nameString
 
-instance Pretty Val where
+instance Pretty Value where
   pretty = \case
     VNode node   -> pretty node
     VPrim sval   -> pretty sval
-    Unit         -> parens Grin.Pretty.empty
 
-instance Pretty VarOrLit where
+instance Pretty VarOrValue where
   pretty = \case
-    Var v -> pretty v
-    Lit l -> pretty l
-
-instance Pretty Literal where
-  pretty = \case
-    LNode node -> pretty node
-    LVal  sval -> pretty sval
+    Var n -> pretty n
+    Val v -> pretty v
 
 instance Pretty SimpleValue where
   pretty = \case

@@ -29,7 +29,7 @@ data Exp
   | ECase       Name [Alt]
   -- Simple Exp
   | SApp        Name [Name]
-  | SPure       VarOrLit
+  | SPure       VarOrValue
   | SStore      Name -- Variable should hold only nodes
   | SFetch      Name -- Variable should hold only locations
   | SUpdate     Name Name -- The variables in order should hold only location and node
@@ -75,7 +75,6 @@ externals = \case
 
 -- * Template Haskell
 
-makeBaseFunctor ''Val
 makeBaseFunctor ''Exp
 
 deriving instance Show a  => Show (ExpF a)

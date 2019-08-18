@@ -13,18 +13,15 @@ spec :: Spec
 spec = do
   describe "Simple interpreter" $ do
     it "works for add" $ do
-      let ctx = externalCalls
-      res <- interpreter ctx $ convertGExpToExp Examples.add
+      res <- interpreter knownExternals $ convertGExpToExp Examples.add
       res `shouldBe` (Prim $ SInt64 30)
 
     it "works for fact" $ do
-      let ctx = externalCalls
-      res <- interpreter ctx $ convertGExpToExp Examples.fact
+      res <- interpreter knownExternals $ convertGExpToExp Examples.fact
       res `shouldBe` (Prim $ SInt64 3628800)
 
     it "works for sumSimple" $ do
-      let ctx = externalCalls
-      res <- interpreter ctx $ convertGExpToExp Examples.sumSimple
+      res <- interpreter knownExternals $ convertGExpToExp Examples.sumSimple
       res `shouldBe` Unit
 
 -- * Test data

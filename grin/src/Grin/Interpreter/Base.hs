@@ -27,7 +27,7 @@ eval = fix baseEval
 baseEval :: (MonadIO m, Interpreter m, a ~ Addr m, v ~ Val m, Show v)
          => (Exp -> m (Val m)) -> Exp -> m (Val m)
 baseEval ev0 = \case
-  SPure (Lit l) -> literal l
+  SPure (Grin.Val v) -> value v
   SPure (Var n) -> do
     p <- askEnv
     pure $ Env.lookup p n
@@ -59,8 +59,7 @@ baseEval ev0 = \case
   EBind (SStore n) (BVar l) rhs -> do
     p <- askEnv
     let v = Env.lookup p n
-    ac <- name2NewStoreInfo l
-    a  <- allocStore ac
+    a  <- allocStore l
     extStore a v
     let p' = Env.insert [(l, a)] p
     localEnv p' (ev0 rhs)
@@ -93,11 +92,9 @@ class (Monad m, MonadFail m) => Interpreter m where
   type HeapVal      m :: * -- ^ Values that can be send to
   type StoreVal     m :: * -- ^ Content of an actual location
   type Addr         m :: * -- ^ A type to represent Addresses
-  type NewStoreInfo m :: * -- ^ When creating a new store location this information helps
-                           --   to distinguis between different path of the interpretation.
 
   -- Conversions, but m type is needed for type inference
-  literal     :: Grin.Literal -> m (Val m)  -- Value of the given literal
+  value       :: Grin.Value   -> m (Val m)  -- Value of the given literal
   val2addr    :: Val m        -> m (Addr m) --
   addr2val    :: Addr m       -> m (Val m)
   heapVal2val :: HeapVal m    -> m (Val m)
@@ -114,7 +111,6 @@ class (Monad m, MonadFail m) => Interpreter m where
   lookupFun     :: Name -> m Exp
   isExternal    :: Name -> m Bool
   external      :: Name -> [Val m] -> m (Val m)
-  name2NewStoreInfo :: Name -> m (NewStoreInfo m)
 
   -- Control-flow
   evalCase      :: (Exp -> m (Val m)) -> Val m -> [Alt] -> m (Val m)
@@ -123,8 +119,7 @@ class (Monad m, MonadFail m) => Interpreter m where
   -- Store
   getStore      :: m (Store (Addr m) (StoreVal m))
   updateStore   :: (Store (Addr m) (StoreVal m) -> Store (Addr m) (StoreVal m)) -> m ()
-  nextLocStore  :: NewStoreInfo m -> Store (Addr m) (StoreVal m) -> m (Addr m)
-  allocStore    :: NewStoreInfo m -> m (Val m)
+  allocStore    :: Name -> m (Val m)
   findStore     :: Val m -> m (Val m)      -- TODO: Change this to Addr m??
   extStore      :: Val m -> Val m -> m ()  --
 

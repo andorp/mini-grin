@@ -43,7 +43,7 @@ data Exp (ctx :: ExpCtx) where
     -> Exp 'Simple
 
   Pure
-    :: VarOrLit
+    :: VarOrValue
     -> Exp 'Simple
 
   Store

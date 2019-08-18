@@ -41,7 +41,7 @@ Change the types in the Interpreter to make compile eval interpreter.
 eval  :: (MonadIO m, Interpreter m)
     => (Exp -> m (Val m)) -> Exp -> m (Val m)
 eval ev0 = \case
-  SPure (Lit l) -> literal l
+  SPure (Grin.Val l) -> value l
   SPure (Var n) -> do
     p <- askEnv
     pure $ Env.lookup p n
@@ -127,7 +127,7 @@ class (Monad m, MonadFail m) => Interpreter m where
   -- The solutions are at the end of this module.
 
   -- Conversions, but m type is needed for type inference
-  literal     :: Literal_ m     -- ^ Convert a literal value to an value of the interpretation
+  value       :: Literal_ m     -- ^ Convert a literal value to an value of the interpretation
   val2addr    :: Val2Addr m     -- ^ Extract the location information from a value, hint :: Val -> Addr
   addr2val    :: Addr2Val m     -- ^ Wrap a location information inside a value
   heapVal2val :: HeapVal2Val m  -- ^ Convert a value that is stored in the heap to a value that
@@ -280,7 +280,7 @@ class (Monad m, MonadFail m) => Interpreter m where
 
 
 
-type Literal_ m  = Grin.Literal -> m (Val m)
+type Literal_ m  = Grin.Value -> m (Val m)
 type Val2Addr m = Val m -> m (Addr m)
 type Addr2Val m = Addr m -> m (Val m)
 type HeapVal2Val m = HeapVal m -> m (Val m)

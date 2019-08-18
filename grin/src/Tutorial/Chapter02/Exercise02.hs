@@ -78,16 +78,16 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
     local (absEnv .~ env) m
 
 
-  literal :: Grin.Literal -> AbstractT m T
-  literal = \case
-    (Grin.LNode (Grin.Node tag ps)) -> do
+  value :: Grin.Value -> AbstractT m T
+  value = \case
+    (Grin.VNode (Grin.Node tag ps)) -> do
       p  <- askEnv
       ts <- pure $ map (Env.lookup p) ps
       pure $ NT $ Node tag $ map (\case
         ST t -> t
         other -> error $ unwords ["value", show other] -- TODO: Include type error
         ) ts
-    (Grin.LVal l) -> pure $ typeOfSimpleValue l
+    (Grin.VPrim l) -> pure $ typeOfSimpleValue l
 
   val2addr :: T -> AbstractT m Loc
   val2addr = \case

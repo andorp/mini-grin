@@ -78,25 +78,22 @@ runDefinitionalT prog ops n = runReaderT (evalStateT (definitionalT n) Store.emp
         (Map.fromList ops)
         Env.empty
 
-data HeapCtx = HeapCtx
-
 instance (Applicative m, Monad m, MonadFail m) => Interpreter (DefinitionalT m) where
   type Val          (DefinitionalT m) = DVal
   type HeapVal      (DefinitionalT m) = Node
   type StoreVal     (DefinitionalT m) = Node
   type Addr         (DefinitionalT m) = Loc
-  type NewStoreInfo (DefinitionalT m) = HeapCtx
 
-  literal :: Grin.Literal -> DefinitionalT m DVal
-  literal = \case
-    (Grin.LNode (Grin.Node t0 ps)) -> do
+  value :: Grin.Value -> DefinitionalT m DVal
+  value = \case
+    (Grin.VNode (Grin.Node t0 ps)) -> do
       p  <- askEnv
       vs <- pure $ map (Env.lookup p) ps
       pure $ DNode $ Node t0 $ map (\case
         DVal v -> v
         other -> error $ "value " ++ show other
         ) vs
-    (Grin.LVal sv) -> pure $ DVal $ simpleValue sv
+    (Grin.VPrim sv) -> pure $ DVal $ simpleValue sv
 
   val2addr :: DVal -> DefinitionalT m Loc
   val2addr = \case
@@ -113,9 +110,6 @@ instance (Applicative m, Monad m, MonadFail m) => Interpreter (DefinitionalT m) 
   val2heapVal = \case
     DNode n -> pure n
     other   -> error $ "val2heapVal: " ++ show other
-
-  name2NewStoreInfo :: Name -> DefinitionalT m HeapCtx
-  name2NewStoreInfo _ = pure HeapCtx
 
   unit :: DefinitionalT m DVal
   unit = pure DUnit
@@ -175,13 +169,10 @@ instance (Applicative m, Monad m, MonadFail m) => Interpreter (DefinitionalT m) 
   updateStore :: (Store Loc Node -> Store Loc Node) -> DefinitionalT m ()
   updateStore f = state (\s -> ((), f s))
 
-  nextLocStore :: HeapCtx -> Store Loc Node -> DefinitionalT m Loc
-  nextLocStore _ (Store s) = pure $ Loc $ Map.size s
-
-  allocStore :: HeapCtx -> DefinitionalT m DVal
-  allocStore h = do
-    s <- getStore
-    a <- nextLocStore h s
+  allocStore :: Name -> DefinitionalT m DVal
+  allocStore _ = do
+    (Store s) <- getStore
+    let a = Loc $ Map.size s
     addr2val a
 
   findStore :: DVal -> DefinitionalT m DVal

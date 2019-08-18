@@ -258,18 +258,17 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
   type HeapVal      (AbstractT m) = Node
   type StoreVal     (AbstractT m) = Set Node
   type Addr         (AbstractT m) = Loc
-  type NewStoreInfo (AbstractT m) = Name
 
-  literal :: Grin.Literal -> AbstractT m T
-  literal = \case
-    (Grin.LNode (Grin.Node tag ps)) -> do
+  value :: Grin.Value -> AbstractT m T
+  value = \case
+    (Grin.VNode (Grin.Node tag ps)) -> do
       p  <- askEnv
       ts <- pure $ map (Env.lookup p) ps
       pure $ NT $ Node tag $ map (\case
         ST t -> t
         other -> error $ unwords ["value", show other] -- TODO: Include type error
         ) ts
-    (Grin.LVal l) -> pure $ typeOfSimpleValue l
+    (Grin.VPrim l) -> pure $ typeOfSimpleValue l
 
   val2addr :: T -> AbstractT m Loc
   val2addr = \case
@@ -286,9 +285,6 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
 
   heapVal2val :: Node -> AbstractT m T
   heapVal2val = pure . NT
-
-  name2NewStoreInfo :: Name -> AbstractT m Name
-  name2NewStoreInfo = pure
 
   unit :: AbstractT m T
   unit = pure UT
@@ -328,7 +324,7 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
     forMonadPlus selectedAlts extendAlt
     where
       isMatching (Alt DefaultPat      _) = pure True
-      isMatching (Alt (LitPat l)      _) = (v ==) <$> literal (Grin.LVal l)
+      isMatching (Alt (LitPat l)      _) = (v ==) <$> value (Grin.VPrim l)
       isMatching (Alt (NodePat t _ps) _) = case v of
         NT (Node t0 _) -> pure $ t == t0
         _nonNodeType   -> pure False
@@ -357,13 +353,10 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
   updateStore :: (AbsStore -> AbsStore) -> AbstractT m ()
   updateStore = (absStr %=)
 
-  nextLocStore :: Name -> AbsStore -> AbstractT m Loc
-  nextLocStore n _ = pure $ Loc n
-
   allocStore :: Name -> AbstractT m T
   allocStore ctx = do
     s <- getStore
-    l <- nextLocStore ctx s
+    let l = Loc ctx
     pure $ ST $ ST_Loc l
 
   findStore :: T -> AbstractT m T
