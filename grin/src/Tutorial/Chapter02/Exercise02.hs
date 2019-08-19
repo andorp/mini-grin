@@ -6,7 +6,7 @@ import Control.Monad.Fail (MonadFail(..))
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Logic hiding (fail)
 import Control.Monad.Reader (MonadReader(..))
-import Control.Monad.State (MonadState(..))
+import Control.Monad.State (MonadState(..), modify)
 import Data.Maybe (fromMaybe, fromJust, isNothing)
 import Data.Function (fix)
 import Grin.Exp (Exp(..), Alt, Program, externals, eName)
@@ -24,7 +24,7 @@ import qualified Data.Set as Set; import Data.Set (Set)
 import qualified Grin.Value as Grin
 
 import Grin.Interpreter.Abstract.Base
-  ( AbstractT, Cache, TypeEnv, T(..), ST(..), Loc(..), AbsStore(..), AbsEnv(..), AbsState(..), Node(..)
+  ( AbstractT(..), Cache, TypeEnv, T(..), ST(..), Loc(..), AbsStore(..), AbsEnv(..), AbsState(..), Node(..)
   , runAbstractT, absStr, absEnv, forMonadPlus
   )
 import Grin.Interpreter.Abstract.Interpreter
@@ -46,15 +46,12 @@ Implement the functions, find the differences
 instance (Monad m, MonadIO m, MonadFail m) => Exercise.Interpreter (AbstractT m) where
   type Val          (AbstractT m) = T
   type HeapVal      (AbstractT m) = Node
-  type StoreVal     (AbstractT m) = Set Node
   type Addr         (AbstractT m) = Loc
-  type NewStoreInfo (AbstractT m) = Name
 
 
-
-  findStore :: T -> AbstractT m T
-  findStore v = do
-    s <- getStore
+  fetchStore :: T -> AbstractT m T
+  fetchStore v = do
+    AbsState s <- get
     a <- val2addr v
     forMonadPlus (Set.toList $ Store.lookup a s) heapVal2val
 
@@ -72,10 +69,8 @@ instance (Monad m, MonadIO m, MonadFail m) => Exercise.Interpreter (AbstractT m)
   extStore v0 v1 = do
     a <- val2addr v0
     n <- val2heapVal v1
-    -- TODO: Make this readable
     let changeElem x = (fmap (Set.insert n) x) `mplus` (Just (Set.singleton n))
-    updateStore (\(Store m) -> Store (Map.alter changeElem a m))
-
+    AbstractT $ (modify (over absStr (\(Store m) -> Store (Map.alter changeElem a m))))
 
   localEnv :: Env T -> AbstractT m T -> AbstractT m T
   localEnv env m = do
@@ -110,9 +105,6 @@ instance (Monad m, MonadIO m, MonadFail m) => Exercise.Interpreter (AbstractT m)
   heapVal2val :: Node -> AbstractT m T
   heapVal2val = pure . NT
 
-  name2NewStoreInfo :: Name -> AbstractT m Name
-  name2NewStoreInfo = pure
-
   unit :: AbstractT m T
   unit = pure UT
 
@@ -122,11 +114,11 @@ instance (Monad m, MonadIO m, MonadFail m) => Exercise.Interpreter (AbstractT m)
   lookupFun :: Name -> AbstractT m Exp
   lookupFun fn = (fromMaybe (error $ unwords ["lookupFun", nameString fn]) . Map.lookup fn . _absFun) <$> ask
 
-  isOperation :: Name -> AbstractT m Bool
-  isOperation n = (Map.member n . _absOps) <$> ask
+  isExternal :: Name -> AbstractT m Bool
+  isExternal n = (Map.member n . _absOps) <$> ask
 
-  operation :: Name -> [T] -> AbstractT m T
-  operation n ps = do
+  external :: Name -> [T] -> AbstractT m T
+  external n ps = do
     -- Exercise
     undefined
 
@@ -135,23 +127,8 @@ instance (Monad m, MonadIO m, MonadFail m) => Exercise.Interpreter (AbstractT m)
     -- Exercise
     undefined
 
-  getStore :: AbstractT m AbsStore
-  getStore = _absStr <$> Control.Monad.State.get
-
-  putStore :: AbsStore -> AbstractT m ()
-  putStore = (absStr .=)
-
-  updateStore :: (AbsStore -> AbsStore) -> AbstractT m ()
-  updateStore = (absStr %=)
-
-  nextLocStore :: Name -> AbsStore -> AbstractT m Loc
-  nextLocStore n _ = pure $ Loc n
-
   allocStore :: Name -> AbstractT m T
-  allocStore ctx = do
-    s <- getStore
-    l <- nextLocStore ctx s
-    pure $ ST $ ST_Loc l
+  allocStore name = pure $ ST $ ST_Loc $ Loc name
 
 -- * Implemented type inference
 

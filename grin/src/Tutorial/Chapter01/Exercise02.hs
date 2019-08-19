@@ -153,8 +153,6 @@ external function calls (in SApp). Given an external function's name, and the
 actual arguments to the call, it calls the corresponding system/OS function.
 -}
 
-
-
 -- The interpreter function gets how to interpret the external functions,
 -- a program to interpret, and returns a computed value.
 --
@@ -211,7 +209,7 @@ eval = \case
   SFetch n -> do
     p <- askEnv
     let v = Env.lookup p n
-    findStore v
+    fetchStore v
 
   SUpdate nl nn -> do
     p <- askEnv
@@ -355,16 +353,6 @@ evalCase ev =
   -- create a new local environment and evaluate the body of the alt in it.
   undefined
 
--- | Looks up the current store. This is needed for abstractions that
--- are not part of the interpreter.
-getStore :: (DC m) => Definitional m (Store Address Node)
-getStore = get
-
--- | Updates the store with the given functions. This is needed for abstractions that
--- are not part of the interpreter.
-updateStore :: (DC m) => (Store Address Node -> Store Address Node) -> Definitional m ()
-updateStore = modify
-
 -- | Creates a location for a given name. This is particular for the GRIN store structure,
 -- where the Store operation must be part of a Bind, thus there will be always a name to
 -- bind to, which should hold the address of the created location.
@@ -377,9 +365,9 @@ allocStore _name = do
   pure $ Prim $ SLoc addr
 
 -- | Loads the content from the store addressed by the given value
-findStore :: (DC m) => Value -> Definitional m Value
-findStore addr = do
-  s <- getStore
+fetchStore :: (DC m) => Value -> Definitional m Value
+fetchStore addr = do
+  s <- get
   a <- undefined addr
   heapVal2val $ Store.lookup a s
 
@@ -388,7 +376,7 @@ extStore :: (DC m) => Value -> Value -> Definitional m ()
 extStore addr val = do
   a <- undefined addr
   n <- val2heapVal val
-  updateStore (Store.insert a n)
+  modify (Store.insert a n)
 
 -- * Helpers
 

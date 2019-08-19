@@ -9,7 +9,6 @@ import Control.Monad.Trans (MonadIO)
 import Data.Function (fix)
 import Data.Maybe (mapMaybe)
 import Grin.Exp
-import Grin.Interpreter.Store
 import Grin.Value hiding (Val)
 
 import Grin.Interpreter.Env (Env)
@@ -41,7 +40,7 @@ baseEval ev0 = \case
   SFetch n -> do
     p <- askEnv
     let v = Env.lookup p n
-    findStore v
+    fetchStore v
 
   SUpdate nl nn -> do
     p <- askEnv
@@ -88,10 +87,9 @@ baseEval ev0 = \case
 -- Type class
 
 class (Monad m, MonadFail m) => Interpreter m where
-  type Val          m :: * -- ^ Values that can be placed in registers/variables
-  type HeapVal      m :: * -- ^ Values that can be send to
-  type StoreVal     m :: * -- ^ Content of an actual location
-  type Addr         m :: * -- ^ A type to represent Addresses
+  type Val     m :: * -- ^ Values that can be placed in registers/variables
+  type HeapVal m :: * -- ^ Values for the Store, Fetch, Update parameters
+  type Addr    m :: * -- ^ A type to represent Addresses
 
   -- Conversions, but m type is needed for type inference
   value       :: Grin.Value   -> m (Val m)  -- Value of the given literal
@@ -117,10 +115,8 @@ class (Monad m, MonadFail m) => Interpreter m where
   funCall       :: (Exp -> m (Val m)) -> Name -> [Val m] -> m (Val m)
 
   -- Store
-  getStore      :: m (Store (Addr m) (StoreVal m))
-  updateStore   :: (Store (Addr m) (StoreVal m) -> Store (Addr m) (StoreVal m)) -> m ()
   allocStore    :: Name -> m (Val m)
-  findStore     :: Val m -> m (Val m)      -- TODO: Change this to Addr m??
+  fetchStore    :: Val m -> m (Val m)      -- TODO: Change this to Addr m??
   extStore      :: Val m -> Val m -> m ()  --
 
 -- * Helper

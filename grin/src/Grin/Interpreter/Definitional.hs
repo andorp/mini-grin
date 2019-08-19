@@ -81,7 +81,6 @@ runDefinitionalT prog ops n = runReaderT (evalStateT (definitionalT n) Store.emp
 instance (Applicative m, Monad m, MonadFail m) => Interpreter (DefinitionalT m) where
   type Val          (DefinitionalT m) = DVal
   type HeapVal      (DefinitionalT m) = Node
-  type StoreVal     (DefinitionalT m) = Node
   type Addr         (DefinitionalT m) = Loc
 
   value :: Grin.Value -> DefinitionalT m DVal
@@ -163,21 +162,15 @@ instance (Applicative m, Monad m, MonadFail m) => Interpreter (DefinitionalT m) 
     let p' = Env.insert (fps `zip` vs) Env.empty
     localEnv p' (ev0 body)
 
-  getStore :: DefinitionalT m (Store Loc Node)
-  getStore = DefinitionalT get
-
-  updateStore :: (Store Loc Node -> Store Loc Node) -> DefinitionalT m ()
-  updateStore f = state (\s -> ((), f s))
-
   allocStore :: Name -> DefinitionalT m DVal
   allocStore _ = do
-    (Store s) <- getStore
+    (Store s) <- get
     let a = Loc $ Map.size s
     addr2val a
 
-  findStore :: DVal -> DefinitionalT m DVal
-  findStore l = do
-    s <- getStore
+  fetchStore :: DVal -> DefinitionalT m DVal
+  fetchStore l = do
+    s <- get
     a <- val2addr l
     heapVal2val $ Store.lookup a s
 
@@ -185,7 +178,7 @@ instance (Applicative m, Monad m, MonadFail m) => Interpreter (DefinitionalT m) 
   extStore l n = do
     a <- val2addr l
     v <- val2heapVal n
-    updateStore (Store.insert a v)
+    DefinitionalT $ modify (Store.insert a v)
 
 evalDefinitional :: (Monad m, MonadFail m, MonadIO m) => Program -> m DVal
 evalDefinitional prog = do

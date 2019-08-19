@@ -90,10 +90,9 @@ exp2CExp = \case
   _             -> Nothing
 
 instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
-  type Val          (AbstractT m) = T
-  type HeapVal      (AbstractT m) = Node
-  type StoreVal     (AbstractT m) = Set Node
-  type Addr         (AbstractT m) = Loc
+  type Val     (AbstractT m) = T
+  type HeapVal (AbstractT m) = Node
+  type Addr    (AbstractT m) = Loc
 
   value :: Grin.Value -> AbstractT m T
   value = \case
@@ -183,18 +182,12 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
     collectFunctionType (fn,vs,v)
     pure v
 
-  getStore :: AbstractT m AbsStore
-  getStore = _absStr <$> Control.Monad.State.get
-
-  updateStore :: (AbsStore -> AbsStore) -> AbstractT m ()
-  updateStore = (absStr %=)
-
   allocStore :: Name -> AbstractT m T
   allocStore name = pure $ ST $ ST_Loc $ Loc name
 
-  findStore :: T -> AbstractT m T
-  findStore v = do
-    s <- getStore
+  fetchStore :: T -> AbstractT m T
+  fetchStore v = do
+    s <- _absStr <$> Control.Monad.State.get
     a <- val2addr v
     forMonadPlus (Set.toList $ Store.lookup a s) heapVal2val
 
@@ -203,10 +196,15 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
     a <- val2addr v0
     n <- val2heapVal v1
     let changeElem x = (fmap (Set.insert n) x) `mplus` (Just (Set.singleton n))
-    updateStore (\(Store m) -> Store (Map.alter changeElem a m))
+    AbstractT $ (modify (over absStr (\(Store m) -> Store (Map.alter changeElem a m))))
 
-putStore :: Interpreter m => Store (Addr m) (StoreVal m) -> m ()
-putStore o = updateStore (const o)
+-- * Fixpoint finding algorithm
+
+putStore :: Store Loc (Set Node) -> AbstractT m ()
+putStore o = (absStr .= o)
+
+getStore :: AbstractT m (Store Loc (Set Node))
+getStore = _absStr <$> Control.Monad.State.get
 
 evalCache
   :: (Monad m, MonadFail m, MonadIO m)
