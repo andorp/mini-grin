@@ -3,8 +3,6 @@ module Grin.Examples where
 
 import Grin.Exp (External(..), BPat(..), CPat(..))
 import Grin.GExp
-import Grin.Value
-import Grin.TypeEnv
 
 -- * Test expression
 

@@ -5,7 +5,7 @@ import Tutorial.Chapter01.Exercise01 (convertGExpToExp)
 import Tutorial.Chapter02.Exercise02 as Exercise
 import Grin.Examples
 import Grin.Pretty
-import qualified Grin.Interpreter.Abstract as Solution
+import qualified Grin.Interpreter.Abstract.TypeInference as Solution
 
 
 

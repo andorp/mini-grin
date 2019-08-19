@@ -26,7 +26,9 @@ library
     Grin.Interpreter.Store
     Grin.Interpreter.Base
     Grin.Interpreter.Definitional
-    Grin.Interpreter.Abstract
+    Grin.Interpreter.Abstract.Base
+    Grin.Interpreter.Abstract.Interpreter
+    Grin.Interpreter.Abstract.TypeInference
     Tutorial.Chapter01.Exercise01
     Tutorial.Chapter01.Exercise02
     Tutorial.Chapter02.Exercise01

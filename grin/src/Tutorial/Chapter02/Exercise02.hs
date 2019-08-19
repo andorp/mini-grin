@@ -7,26 +7,31 @@ import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Logic hiding (fail)
 import Control.Monad.Reader (MonadReader(..))
 import Control.Monad.State (MonadState(..))
-import Data.Maybe
+import Data.Maybe (fromMaybe, fromJust, isNothing)
 import Data.Function (fix)
-import Grin.Exp
+import Grin.Exp (Exp(..), Alt, Program, externals, eName)
 import qualified Grin.TypeEnv as Grin
 import Grin.Value hiding (Val, Node)
 import Lens.Micro.Platform
 import Prelude hiding (fail)
 
 import Grin.Interpreter.Env (Env)
-import qualified Grin.Interpreter.Env as Env
 import Grin.Interpreter.Store (Store(..))
+import qualified Grin.Interpreter.Env as Env
 import qualified Grin.Interpreter.Store as Store
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set; import Data.Set (Set)
 import qualified Grin.Value as Grin
 
-import Grin.Interpreter.Abstract
+import Grin.Interpreter.Abstract.Base
   ( AbstractT, Cache, TypeEnv, T(..), ST(..), Loc(..), AbsStore(..), AbsEnv(..), AbsState(..), Node(..)
-  , evalCache, fixCache, runAbstractT, absStr, appendFunOut, absEnv, appendEnvOut, typeOfSimpleValue, calcTypeEnv
+  , runAbstractT, absStr, absEnv, forMonadPlus
   )
+import Grin.Interpreter.Abstract.Interpreter
+  ( evalCache, fixCache, collectFunctionType, collectEnv, typeOfSimpleValue
+  )
+import Grin.Interpreter.Abstract.TypeInference (calcTypeEnv)
+
 import Tutorial.Chapter01.Exercise02 as Exercise (grinMain)
 import Tutorial.Chapter02.Exercise01 as Exercise
 
@@ -38,12 +43,7 @@ Implement the functions, find the differences
 -}
 
 
-
-
-forMonadPlus :: (MonadPlus m) => [a] -> (a -> m b) -> m b
-forMonadPlus xs k = msum (map k xs)
-
-instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
+instance (Monad m, MonadIO m, MonadFail m) => Exercise.Interpreter (AbstractT m) where
   type Val          (AbstractT m) = T
   type HeapVal      (AbstractT m) = Node
   type StoreVal     (AbstractT m) = Set Node
@@ -59,22 +59,27 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
     forMonadPlus (Set.toList $ Store.lookup a s) heapVal2val
 
   bindPattern :: T -> (Tag, [Name]) -> AbstractT m [(Name, T)]
-  bindPattern t (tag,ps) = error "TODO"
+  bindPattern t (tag,ps) =
+    -- Exercise
+    undefined
 
   evalCase :: (Exp -> AbstractT m T) -> T -> [Alt] -> AbstractT m T
-  evalCase ev0 v alts = error "TODO"
+  evalCase ev0 v alts =
+    -- Exercise
+    undefined
 
   extStore :: T -> T -> AbstractT m ()
   extStore v0 v1 = do
     a <- val2addr v0
     n <- val2heapVal v1
+    -- TODO: Make this readable
     let changeElem x = (fmap (Set.insert n) x) `mplus` (Just (Set.singleton n))
     updateStore (\(Store m) -> Store (Map.alter changeElem a m))
 
 
   localEnv :: Env T -> AbstractT m T -> AbstractT m T
   localEnv env m = do
-    appendEnvOut env
+    collectEnv env
     local (absEnv .~ env) m
 
 
@@ -111,10 +116,8 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
   unit :: AbstractT m T
   unit = pure UT
 
-  -- non-pure
   askEnv :: AbstractT m (Env T)
   askEnv = _absEnv <$> ask
-
 
   lookupFun :: Name -> AbstractT m Exp
   lookupFun fn = (fromMaybe (error $ unwords ["lookupFun", nameString fn]) . Map.lookup fn . _absFun) <$> ask
@@ -124,18 +127,13 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
 
   operation :: Name -> [T] -> AbstractT m T
   operation n ps = do
-    (r,ts) <- (fromJust . Map.lookup n . _absOps) <$> ask
-    when (ps /= ts) $ error $ unwords ["operation", nameString n, show ps, show ts]
-    appendFunOut (n,ts,r)
-    pure r
+    -- Exercise
+    undefined
 
   funCall :: (Exp -> AbstractT m T) -> Name -> [T] -> AbstractT m T
   funCall ev0 fn vs = do
-    (Def _ fps body) <- lookupFun fn
-    let p' = Env.insert (fps `zip` vs) Env.empty
-    v <- localEnv p' (ev0 body)
-    appendFunOut (fn,vs,v)
-    pure v
+    -- Exercise
+    undefined
 
   getStore :: AbstractT m AbsStore
   getStore = _absStr <$> Control.Monad.State.get
@@ -155,17 +153,7 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
     l <- nextLocStore ctx s
     pure $ ST $ ST_Loc l
 
-
-
-
-
-
-
-
-
-
-
-
+-- * Implemented type inference
 
 typeInference :: (Monad m, MonadFail m, MonadIO m) => Program -> m Grin.TypeEnv
 typeInference = fmap (calcTypeEnv . fst) . evalAbstract
