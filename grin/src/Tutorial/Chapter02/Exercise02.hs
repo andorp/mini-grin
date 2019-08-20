@@ -38,8 +38,12 @@ import Tutorial.Chapter02.Exercise01 as Exercise
 
 
 {-
-TODO: Explain the exercise.
-Implement the functions, find the differences
+Exercise:
+Read the 'Abstracting Closures' from
+https://plum-umd.github.io/abstracting-definitional-interpreters/#%28part._s~3aabstracting-closures%29
+
+Exercise:
+Read the Grin.Interpreter.Abstract.Base module
 -}
 
 
@@ -48,7 +52,10 @@ instance (Monad m, MonadIO m, MonadFail m) => Exercise.Interpreter (AbstractT m)
   type HeapVal      (AbstractT m) = Node
   type Addr         (AbstractT m) = Loc
 
-
+  -- As you remember, the Abstract store can hold a Set of Nodes. The interpretation of
+  -- the Fetch operation is to retrieve the 'Set Node' and continue the rest of the
+  -- computation one by one, to achieve this we need to use the Non-Det monad, which
+  -- is implemented in the LogicT monad.
   fetchStore :: T -> AbstractT m T
   fetchStore v = do
     AbsState s <- get
@@ -57,19 +64,25 @@ instance (Monad m, MonadIO m, MonadFail m) => Exercise.Interpreter (AbstractT m)
 
   bindPattern :: T -> (Tag, [Name]) -> AbstractT m [(Name, T)]
   bindPattern t (tag,ps) =
-    -- Exercise
+    -- Exercise: Similar to the bindPattern in the definitional interpreter
+    -- match the tag from the value with the names and return the association list.
+    -- If the tag doesn't match use the mzero instead of throwing an error.
     undefined
 
   evalCase :: (Exp -> AbstractT m T) -> T -> [Alt] -> AbstractT m T
   evalCase ev0 v alts =
-    -- Exercise
+    -- Exercise: Similar to the definitional interpreter, filter out
+    -- the matching alts. Using the forMonadPlus operator for all the
+    -- matchin ones extend the environment if necessary and evaluate the
+    -- body of the alt
     undefined
 
   extStore :: T -> T -> AbstractT m ()
   extStore v0 v1 = do
     a <- val2addr v0
     n <- val2heapVal v1
-    let changeElem x = (fmap (Set.insert n) x) `mplus` (Just (Set.singleton n))
+    let changeElem Nothing  = Just (Set.singleton n)
+        changeElem (Just m) = Just (Set.insert n m)
     AbstractT $ (modify (over absStr (\(Store m) -> Store (Map.alter changeElem a m))))
 
   localEnv :: Env T -> AbstractT m T -> AbstractT m T
@@ -115,7 +128,7 @@ instance (Monad m, MonadIO m, MonadFail m) => Exercise.Interpreter (AbstractT m)
   lookupFun fn = (fromMaybe (error $ unwords ["lookupFun", nameString fn]) . Map.lookup fn . _absFun) <$> ask
 
   isExternal :: Name -> AbstractT m Bool
-  isExternal n = (Map.member n . _absOps) <$> ask
+  isExternal n = (Map.member n . _absExt) <$> ask
 
   external :: Name -> [T] -> AbstractT m T
   external n ps = do

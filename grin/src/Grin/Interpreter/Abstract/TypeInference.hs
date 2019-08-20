@@ -11,10 +11,10 @@ import Control.Monad.Logic hiding (fail)
 import Data.Function (fix)
 import Data.Maybe (fromJust)
 import Data.Maybe (isNothing)
-import Grin.Exp (Program, eName, externals)
+import Grin.Exp (Program, eName, externals, Exp(SApp))
 import Grin.TypeEnv hiding (TypeEnv(..), Loc)
 import Grin.Value (Name)
-import Grin.Interpreter.Base (baseEval, grinMain)
+import Grin.Interpreter.Base (baseEval)
 import Grin.Pretty hiding (SChar)
 import Prelude hiding (fail)
 import Grin.GExpToExp (gexpToExp)
@@ -55,7 +55,7 @@ abstractEval prog = do
   forM_ exts $ \ext -> do
     when (isNothing (Map.lookup (eName ext) opsMap)) $
       fail $ "Missing external: " ++ show (eName ext)
-  (\(_,tc,_) -> tc) <$> runAbstractT prog ops (fixCache (fix (evalCache baseEval)) (grinMain prog))
+  (\(_,tc,_) -> tc) <$> runAbstractT prog ops (fixCache (fix (evalCache baseEval)) (SApp "main" []))
   where
     exts = externals prog
     prim_int_add    = (ST ST_Int64, [ST ST_Int64, ST ST_Int64])
@@ -146,4 +146,4 @@ calcTypeEnv TypeEnv{..} = Grin.TypeEnv
   , Grin._function = funcToFunctions locToHeap _function
   }
   where
-    (locToHeap, locationNodeSet) = locsToLocation _location
+    (locToHeap, locationNodeSet) = locsToLocation _heap

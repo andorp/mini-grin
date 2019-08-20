@@ -81,7 +81,7 @@ localCacheIn inC m = AbstractT $ RWST $ \ae as -> LogicT $ \sk fk -> do
   local (\(te, _) -> (te <> cache2TypeEnv inC, inC)) $ unLogicT (runRWST (abstractT m) ae as) sk fk
 
 cache2TypeEnv :: Cache -> TypeEnv
-cache2TypeEnv (Cache m) = mempty { _location = (mconcat $ Set.toList $ Set.map snd $ Set.unions $ Map.elems m) }
+cache2TypeEnv (Cache m) = mempty { _heap = (mconcat $ Set.toList $ Set.map snd $ Set.unions $ Map.elems m) }
 
 exp2CExp :: Exp -> Maybe CExp
 exp2CExp = \case
@@ -144,11 +144,11 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
   lookupFun fn = (fromMaybe (error $ unwords ["lookupFun", Grin.nameString fn]) . Map.lookup fn . _absFun) <$> ask
 
   isExternal :: Name -> AbstractT m Bool
-  isExternal n = (Map.member n . _absOps) <$> ask
+  isExternal n = (Map.member n . _absExt) <$> ask
 
   external :: Name -> [T] -> AbstractT m T
   external n ps = do
-    (r,ts) <- (fromJust . Map.lookup n . _absOps) <$> ask
+    (r,ts) <- (fromJust . Map.lookup n . _absExt) <$> ask
     when (ps /= ts) $ error $ unwords ["external", Grin.nameString n, show ps, show ts]
     collectFunctionType (n,ts,r)
     pure r
@@ -195,7 +195,8 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
   extStore v0 v1 = do
     a <- val2addr v0
     n <- val2heapVal v1
-    let changeElem x = (fmap (Set.insert n) x) `mplus` (Just (Set.singleton n))
+    let changeElem Nothing  = Just (Set.singleton n)
+        changeElem (Just m) = Just (Set.insert n m)
     AbstractT $ (modify (over absStr (\(Store m) -> Store (Map.alter changeElem a m))))
 
 -- * Fixpoint finding algorithm
@@ -210,13 +211,11 @@ evalCache
   :: (Monad m, MonadFail m, MonadIO m)
   => ((Exp -> AbstractT m T) -> (Exp -> AbstractT m T)) -> (Exp -> AbstractT m T) -> Exp -> AbstractT m T
 evalCache ev0 ev1 e = do
-  p   <- askEnv
-  o   <- getStore
   case (exp2CExp e) of
     Nothing -> do
       ev0 ev1 e
     Just ce -> do
-      let c = Config { cfgEnv = p, cfgStore = o, cfgExp = ce }
+      let c = Config { cfgExp = ce }
       outc <- getCacheOut
       if inCache c outc
         then do

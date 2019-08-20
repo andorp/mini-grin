@@ -112,15 +112,19 @@ eval ev = \case
 
   overGenerative -> error $ show overGenerative
 
-
+{-
+Exercise:
+Discuss why the associated types are necessary.
+Understand the type signatures.
+-}
 class (Monad m, MonadFail m) => Interpreter m where
-  type Val          m :: * -- ^ Values that can be placed in registers/variables
-  type HeapVal      m :: * -- ^ Values for the Store, Fetch, Update parameters
-  type Addr         m :: * -- ^ A type to represent Addresses
+  type Val     m :: * -- ^ Values that can be placed in registers/variables
+  type HeapVal m :: * -- ^ Values for the Store, Fetch, Update parameters
+  type Addr    m :: * -- ^ A type to represent Addresses
 
   -- Conversions, but m type is needed for type inference
   value       :: Grin.Value   -> m (Val m)  -- Value of the given literal
-  val2addr    :: Val m        -> m (Addr m) --
+  val2addr    :: Val m        -> m (Addr m)
   addr2val    :: Addr m       -> m (Val m)
   heapVal2val :: HeapVal m    -> m (Val m)
   val2heapVal :: Val m        -> m (HeapVal m)
@@ -143,8 +147,13 @@ class (Monad m, MonadFail m) => Interpreter m where
 
   -- Store
   allocStore    :: Name -> m (Val m)
-  fetchStore    :: Val m -> m (Val m)      -- TODO: Change this to Addr m??
-  extStore      :: Val m -> Val m -> m ()  --
+  fetchStore    :: Val m -> m (Val m)
+  extStore      :: Val m -> Val m -> m ()
+
+{-
+After all the previous implementation of the interpreter can be reused in the
+Interpreter typeclass...
+-}
 
 instance (MonadIO m, Monad m, MonadFail m) => Interpreter (Definitional m) where
   type Val     (Definitional m) = Definitional.Value

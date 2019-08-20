@@ -121,13 +121,6 @@ class (Monad m, MonadFail m) => Interpreter m where
 
 -- * Helper
 
-grinMain :: Program -> Exp
-grinMain = \case
-  (Program _ defs) -> head $ flip mapMaybe defs $ \case
-                        (Def n _ b) -> if n == "main" then Just b else Nothing
-                        _           -> Nothing
-  _                -> error "grinMain"
-
 programToDefs :: Program -> Map.Map Name Exp
 programToDefs = \case
   (Program _ defs) -> Map.fromList ((\d@(Def n _ _) -> (n,d)) <$> defs)

@@ -16,6 +16,7 @@ import Grin.Interpreter.Base
 import Grin.Value (Name, Tag)
 import Lens.Micro.Platform
 import Prelude hiding (fail)
+import Grin.GExpToExp (gexpToExp)
 
 import Grin.Interpreter.Store (Store(..))
 import qualified Grin.Interpreter.Store as Store
@@ -23,6 +24,7 @@ import Grin.Interpreter.Env (Env)
 import qualified Grin.Interpreter.Env as Env
 import qualified Data.Map.Strict as Map
 import qualified Grin.Value as Grin
+import qualified Grin.Examples as Examples
 
 
 -- * Definitional Interpreter
@@ -193,7 +195,7 @@ evalDefinitional prog = do
   forM_ exts $ \ext -> do
     when (isNothing (Map.lookup (eName ext) opsMap)) $
       fail $ "Missing external: " ++ show (eName ext)
-  runDefinitionalT prog ops (eval (grinMain prog))
+  runDefinitionalT prog ops (eval (SApp "main" []))
   where
     exts = externals prog
     prim_int_add    [(DVal (SInt64 a)),(DVal (SInt64 b))] = pure (DVal (SInt64 (a + b)))
@@ -209,17 +211,11 @@ evalDefinitional prog = do
     prim_int_print  [(DVal (SInt64 i))] = liftIO $ print i >> pure DUnit
     prim_int_print  ps = error $ "prim_int_print " ++ show ps
 
-{-
+
 -- * Test runs
 
-runAdd :: IO ()
-runAdd = do  print =<< evalDefinitional add
-
-runFact :: IO ()
-runFact = do
-  print =<< evalDefinitional fact
-
-runSum :: IO ()
-runSum = do
-  print =<< evalDefinitional sumSimple
--}
+tests :: IO ()
+tests = do
+  print =<< (evalDefinitional $ gexpToExp $ Examples.add)
+  print =<< (evalDefinitional $ gexpToExp $ Examples.fact)
+  print =<< (evalDefinitional $ gexpToExp $ Examples.sumSimple)
