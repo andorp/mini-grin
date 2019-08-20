@@ -1,17 +1,36 @@
 {-# LANGUAGE DataKinds #-}
 module Grin.Examples where
 
-import Grin.Exp (External(..), BPat(..), CPat(..))
+import Grin.Value
+  ( VarOrValue(Var, Val)
+  , Tag(Tag)
+  , TagType(C,F)
+  , Node(Node)
+  , Value(VNode, VPrim)
+  , SimpleValue(SInt64,SBool)
+  )
+
+import Grin.TypeEnv
+  ( SimpleType(T_Int64, T_Bool)
+  , Ty(TySimple)
+  )
+
+import Grin.Exp
+  ( External(External)
+  , BPat(BUnit,BVar,BNodePat)
+  , CPat(NodePat, LitPat)
+  )
+
 import Grin.GExp
+  ( Exp(Program,Def,Case,Alt,App,Store,Fetch,Update,Bind,Pure)
+  , ExpCtx(Prg)
+  )
 
 -- * Test expression
 
 -- NOTE: explain data ctors, explain every first example
--- NOTE: explicit imports
 -- NOTE: smaller example to demostrate heap operations
--- NOTE: emphasize GADTs
 
--- TODO: investigate pretty (why doesn't it print primops)
 {-
 primop pure
   prim_int_add :: T_Int64 -> T_Int64 -> T_Int64
@@ -44,13 +63,10 @@ add =
 -- * Factorial
 
 {-
-primop pure
-  prim_int_sub   :: T_Int64 -> T_Int64 -> T_Int64
-  prim_int_mul   :: T_Int64 -> T_Int64 -> T_Int64
-  prim_int_eq    :: T_Int64 -> T_Int64 -> T_Bool
-
-ffi effectful
-  prim_int_print :: T_Int64 -> T_Unit
+prim_int_sub :: T_Int64 -> T_Int64 -> T_Int64
+prim_int_mul :: T_Int64 -> T_Int64 -> T_Int64
+prim_int_eq :: T_Int64 -> T_Int64 -> T_Bool
+prim_int_print :: T_Int64 -> T_Int64 -> T_Int64
 
 fact f1 =
   f2 <- pure 0
@@ -103,6 +119,12 @@ fact =
 -- * Sum simple
 
 {-
+prim_int_add :: T_Int64 -> T_Int64 -> T_Int64
+prim_int_sub :: T_Int64 -> T_Int64 -> T_Int64
+prim_int_eq :: T_Int64 -> T_Int64 -> T_Bool
+prim_int_gt :: T_Int64 -> T_Int64 -> T_Bool
+prim_int_print :: T_Int64 -> T_Int64 -> T_Int64
+
 main =
   m1 <- pure 1
   m2 <- pure 100

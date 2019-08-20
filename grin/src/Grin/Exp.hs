@@ -86,7 +86,7 @@ deriving instance Ord a   => Ord  (ExpF a)
 -- * Pretty
 
 instance Pretty Exp where
-  pretty = prettyProgram Simple
+  pretty = prettyProgram WithExternals
 
 instance Pretty CPat where
   pretty = \case
