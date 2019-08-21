@@ -40,6 +40,9 @@ Open the Grin.GExp module and check the GExp datatype.
 
 Exercise:
 Complete the definition above.
+
+Exercise:
+Which of constructor of the Exp is not covered by the GExp constructors, why?
 -}
 
 convertGExpToExp :: forall ctx . Exp ctx -> E.Exp

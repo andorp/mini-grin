@@ -36,7 +36,9 @@ data Exp
   | SUpdate     Name Name -- The variables in order should hold only location and node
   -- Alt
   | Alt CPat Exp
-  | Block Exp
+  | Block Exp -- Block plays a role in transformations. When a transformation needs to
+              -- replace a simple Expression with a complex Bind one, the Block constructor
+              -- comes into the picture.
   deriving (Eq, Ord, Show)
 
 -- * Externals
