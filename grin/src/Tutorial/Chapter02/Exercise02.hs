@@ -32,7 +32,6 @@ import Grin.Interpreter.Abstract.Interpreter
   )
 import Grin.Interpreter.Abstract.TypeInference (calcTypeEnv)
 
-import Tutorial.Chapter01.Exercise02 as Exercise (grinMain)
 import Tutorial.Chapter02.Exercise01 as Exercise
 
 
@@ -161,7 +160,7 @@ evalAbstract prog = do
   forM_ exts $ \ext -> do
     when (isNothing (Map.lookup (eName ext) opsMap)) $
       fail $ "Missing external: " ++ show (eName ext)
-  (\(_,tc,_) -> tc) <$> runAbstractT prog ops (fixCache (fix (evalCache Exercise.eval)) (Exercise.grinMain prog))
+  (\(_,tc,_) -> tc) <$> runAbstractT prog ops (fixCache (fix (evalCache Exercise.eval)) (SApp "main" []))
   where
     exts = externals prog
     prim_int_add    = (ST ST_Int64, [ST ST_Int64, ST ST_Int64])

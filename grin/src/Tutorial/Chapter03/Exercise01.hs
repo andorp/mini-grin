@@ -1,81 +1,86 @@
-{-# LANGUAGE FlexibleContexts, LambdaCase #-}
+{-# LANGUAGE LambdaCase, ScopedTypeVariables, TypeFamilies #-}
 module Tutorial.Chapter03.Exercise01 where
 
-import Data.Functor.Foldable
+import Data.Functor.Foldable (cata, hylo, embed, project)
+import Data.Functor.FoldableM
 import Control.Monad.State.Strict
-import qualified Data.Map.Strict as Map
-import qualified Data.Set as Set
+
+import Grin.Value (Name, VarOrValue(..), mkName)
 import Grin.Exp
-import Grin.Value
-
-{-
-Exercise:
-Write a transformation which first collects the non-used parameters of functions.
-And than removes the parameters from the definitions and function calls.
-
-TODO: Explanation of the functor foldable library.
--}
-
-type FunName = Name
-
-data Info
-  = Names        { used :: Set.Set Name }
-  | NonUsedParam { nonUsedParams :: Map.Map FunName [(Name, Int)] }
-
-instance Semigroup Info where
-  Names n1          <> Names n2         = Names (n1 <> n2)
-  NonUsedParam nu1  <> NonUsedParam nu2 = NonUsedParam (nu1 <> nu2)
-
-instance Monoid Info where
-  mempty = Names mempty
+import qualified Data.Map as Map
 
 
--- NOTE: use this instead of mconcat, also remember to add SAppF
-mconcat1 :: Semigroup m => [m] -> m
-mconcat1 = foldl1 (<>)
+-- Exercise:
+-- Open the Data.Functor.Foldable library and read the Recursive, Corecursive typeclass, cata, ana function.
+renameVars :: Name -> Name -> Int -> Exp -> Exp
+renameVars ep arg i = cata $ \case
+  -- Exercise: Undestand, how the BaseFunctor like EBindF plays a role in this expression.
+  EBindF (lhs :: Exp) BUnit (rhs :: Exp) -> EBind lhs BUnit rhs
 
-collectNonUsedParams :: Exp -> Info
-collectNonUsedParams = cata $ \case
-  ProgramF _exts infos -> mconcat1 infos
-
-  -- Exercise: Create a singleton map for the function name with the non-used parameters if there is any.
-  DefF funName ps (Names used) -> NonUsedParam $ undefined ps used
-
-  -- NOTE: literal? also, Node literals?
-  -- Exercise: Collect the names from the literal
-  SPureF literal -> Names undefined
-
-  SStoreF n       -> Names $ Set.singleton n
-  SFetchF n       -> Names $ Set.singleton n
-  SUpdateF n1 n2  -> Names $ Set.fromList [n1,n2]
-
-  EBindF lhs BUnit rhs    -> lhs <> rhs
-  EBindF lhs (BVar n) rhs -> mconcat1 [lhs, Names (Set.singleton n), rhs]
-
-  -- Exercise: Collect all the used names
-  EBindF lhs (BNodePat _tag names) rhs -> undefined
-
-  ECaseF n alts -> mconcat1 $ Names (Set.singleton n) : alts
-  AltF _ body   -> body
-
-
-removeFunctionParams :: Info -> Exp -> Exp
-removeFunctionParams (NonUsedParam funsToChange) = ana $ \case
-  Def funName ps body -> case Map.lookup funName funsToChange of
-    Nothing           -> DefF funName ps body
-    -- Exercise: remove the parameters from the ps which are in the paramsToElim
-    Just paramsToElim -> DefF funName (undefined ps) body
-
-  SApp funName params -> case Map.lookup funName funsToChange of
-    Nothing           -> SAppF funName params
-    -- Exercise: remove the parameters from the function call that are in the paramsToElim
-    --           use the Int index parameter
-    Just paramsToElim -> SAppF funName (undefined params)
-
-  e -> project e
+  EBindF lhs (BVar n)         rhs -> EBind lhs (BVar (new n)) rhs
+  EBindF lhs (BNodePat t as)  rhs -> EBind lhs (BNodePat t (map new as)) rhs
+  SPureF (Var n)            -> SPure (Var (new n))
+  SPureF (Val l)            -> SPure (Val l)
+  SStoreF n                 -> SStore (new n)
+  SFetchF n                 -> SFetch (new n)
+  SUpdateF n1 n2            -> SUpdate (new n1) (new n2)
+  SAppF f as                -> SApp f (map new as)
+  ECaseF n (alts :: [Exp])  -> ECase (new n) alts
+  AltF DefaultPat body      -> Alt DefaultPat body
+  AltF (LitPat l) body      -> Alt (LitPat l) body
+  AltF (NodePat t as) body  -> Alt (NodePat t (map new as)) body
+  BlockF body               -> Block body
+  other -> error $ show other -- This function shouldn't be applied defs and above
+  where
+    -- Replace the original e1 argument with the actual call parameter in
+    -- the call side.
+    new n | n == ep   = arg
+          | otherwise = n <> (mkName $ show i)
 
 
-transform :: Exp -> Exp
-transform e =
-  let info = collectNonUsedParams e
-  in removeFunctionParams info e
+-- Exercise: Open the Data.Functor.FoldableM module and read the description of the apoM function.
+inlineEval :: Exp -> Exp
+inlineEval prog
+  = bindNormalisation
+  $ flip evalState (0 :: Int)
+  $ flip apoM prog $ \case
+      Program exts defs -> pure $ ProgramF exts $ map Right $ filter notEval defs
+
+      -- Inline the body replacing the name of the variables with a given index.
+      SApp "eval" [arg] -> BlockF <$> inlineBody arg
+
+      -- Exercise: Find out which function to use from the Data.Functor.Foldable library to
+      -- complete the definition
+      other -> pure $ fmap Right $ undefined other
+      where
+        -- Find eval
+        (Def "eval" [v] b) = (programToDefs prog) Map.! "eval"
+
+        -- Exercise: Rewrite notEval to return True on the eval
+        notEval _ = False
+
+        inlineBody arg = do
+          i <- get
+          modify succ
+          -- If the apoM gets a Left value it stops the recursion on that branch
+          -- and just returns the computed value. In this case, we compute the
+          -- inlined body of the eval.
+          pure $ Left $ renameVars v arg i b
+
+-- * Helper
+
+bindNormalisation :: Exp -> Exp
+bindNormalisation = hylo alg coalg where
+  alg :: ExpF Exp -> Exp
+  alg (BlockF e) = e
+  alg e          = embed e
+
+  coalg :: Exp -> ExpF Exp
+  coalg (EBind lhs1 pat1 rhs1)
+    | EBind lhs2 pat2 rhs2 <- rmBlocks lhs1
+    = BlockF $ EBind lhs2 pat2 (EBind (Block rhs2) pat1 rhs1)
+  coalg e = project e
+
+  rmBlocks :: Exp -> Exp
+  rmBlocks (Block e) = rmBlocks e
+  rmBlocks e          = e

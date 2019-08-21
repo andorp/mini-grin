@@ -5,7 +5,7 @@ module Tutorial.Chapter01.Exercise02 where
 import Data.Int
 import Data.Word
 import Data.Maybe
-import Grin.Exp
+import Grin.Exp (Exp(..), Program, Alt, BPat(..), programToDefs)
 import Control.Monad.Fail
 import Control.Monad.Reader
 import Control.Monad.State
@@ -160,7 +160,7 @@ actual arguments to the call, it calls the corresponding system/OS function.
 -- loads the body of the main function and starts to evaluate that expression.
 interpreter :: InterpretExternal -> Program -> IO Value
 interpreter iext prog =
-    fst <$> runInterpreter (eval (grinMain prog))
+    fst <$> runInterpreter (eval (SApp "main" []))
   where
     runInterpreter :: (Monad m, MonadIO m, MonadFail m) => Definitional m a -> m (a, Store Address Node)
     runInterpreter (Definitional r) = do
@@ -377,20 +377,6 @@ extStore addr val = do
   a <- undefined addr
   n <- val2heapVal val
   modify (Store.insert a n)
-
--- * Helpers
-
-grinMain :: Program -> Exp
-grinMain = \case
-  (Program _ defs) -> head $ flip mapMaybe defs $ \case
-                        (Def n _ b) -> if n == "main" then Just b else Nothing
-                        _           -> Nothing
-  _                -> error "grinMain"
-
-programToDefs :: Program -> Map.Map Grin.Name Exp
-programToDefs = \case
-  (Program _ defs) -> Map.fromList ((\d@(Def n _ _) -> (n,d)) <$> defs)
-  _                -> mempty
 
 -- * The externals that the interpreter can understand
 

@@ -7,13 +7,11 @@ import Control.Monad (void)
 import Control.Monad.Fail
 import Control.Monad.Trans (MonadIO)
 import Data.Function (fix)
-import Data.Maybe (mapMaybe)
 import Grin.Exp
 import Grin.Value hiding (Val)
 
 import Grin.Interpreter.Env (Env)
 import qualified Grin.Interpreter.Env as Env
-import qualified Data.Map.Strict as Map
 import qualified Grin.Value as Grin
 
 
@@ -118,10 +116,3 @@ class (Monad m, MonadFail m) => Interpreter m where
   allocStore    :: Name -> m (Val m)
   fetchStore    :: Val m -> m (Val m)      -- TODO: Change this to Addr m??
   extStore      :: Val m -> Val m -> m ()  --
-
--- * Helper
-
-programToDefs :: Program -> Map.Map Name Exp
-programToDefs = \case
-  (Program _ defs) -> Map.fromList ((\d@(Def n _ _) -> (n,d)) <$> defs)
-  _                -> mempty

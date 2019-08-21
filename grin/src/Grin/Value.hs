@@ -17,6 +17,9 @@ import Grin.Pretty hiding (SChar)
 data Name = NM { getName :: !Text }
   deriving (Generic, Data, Eq, Ord)
 
+mkName :: String -> Name
+mkName = fromString
+
 instance Show Name where
   show (NM nm) = show nm
 

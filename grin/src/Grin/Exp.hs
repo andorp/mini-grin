@@ -12,6 +12,7 @@ import Grin.Pretty
 import Grin.TypeEnv
 import Grin.Value
 import Prelude hiding (exp)
+import Data.Map (Map, fromList)
 
 
 -- * GRIN Expression
@@ -35,8 +36,10 @@ data Exp
   | SUpdate     Name Name -- The variables in order should hold only location and node
   -- Alt
   | Alt CPat Exp
+  | Block Exp
   deriving (Eq, Ord, Show)
 
+-- * Externals
 
 data External
   = External
@@ -49,8 +52,6 @@ data External
 
 isExternalName :: [External] -> Name -> Bool
 isExternalName es n = n `Prelude.elem` (eName <$> es)
-
-
 
 -- * Case Pattern
 
@@ -73,6 +74,14 @@ externals = \case
   Program es _ -> es
   _            -> []
 
+-- * Programs
+
+programToDefs :: Program -> Map Name Exp
+programToDefs = \case
+  (Program _ defs) -> fromList ((\d@(Def n _ _) -> (n,d)) <$> defs)
+  _                -> mempty
+
+
 -- * Template Haskell
 
 makeBaseFunctor ''Exp
@@ -80,8 +89,6 @@ makeBaseFunctor ''Exp
 deriving instance Show a  => Show (ExpF a)
 deriving instance Eq a    => Eq   (ExpF a)
 deriving instance Ord a   => Ord  (ExpF a)
-
-
 
 -- * Pretty
 
@@ -138,6 +145,8 @@ prettyHighlightExternals exts = cata folder where
     SUpdateF name val       -> keywordR "update" <+> pretty name <+> pretty val
     -- Alt
     AltF cpat exp     -> pretty cpat <+> text "->" <$$> indent 2 exp
+    -- Block
+    BlockF exp              -> text "do" <$$> indent 2 exp
 
 printGrin :: Exp -> IO ()
 printGrin = putStrLn . showWide . pretty

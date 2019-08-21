@@ -15,6 +15,7 @@ library
   default-extensions:  OverloadedStrings
   ghc-options:         -Wall -Wno-orphans
   exposed-modules:
+    Data.Functor.FoldableM
     Grin.Value
     Grin.TypeEnv
     Grin.Exp
@@ -78,6 +79,7 @@ test-suite grin-test
                      , hspec-discover
                      , hspec-expectations
                      , transformers
+                     , containers
                      , grin
   other-modules:
     Tutorial.Chapter01.Exercise01Spec
