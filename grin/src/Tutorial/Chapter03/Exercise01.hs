@@ -82,14 +82,15 @@ inlineEval prog
       SApp "eval" [arg] -> BlockF <$> inlineBody arg
 
       -- Exercise: Find out which function to use from the Data.Functor.Foldable library to
-      other -> pure $ fmap Right $ undefined other
       -- complete the definition. Why?
+      other -> pure $ fmap Right $ project other
       where
         -- Find eval
         (Def "eval" [v] b) = (programToDefs prog) Map.! "eval"
 
-        notEval _ = False
         -- Exercise: Rewrite notEval to return False on the eval
+        notEval (Def "eval" _ _) = False
+        notEval _                = True
 
         inlineBody arg = do
           i <- get
