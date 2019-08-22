@@ -268,7 +268,7 @@ value = \case
   -- Exercise: Node can refer to names, lookup the names from
   -- the environment and create a runtime Node value from
   -- the value that was defined in the source.
-  Grin.VNode vnode -> undefined vnode
+  Grin.VNode (Grin.Node t ps) -> Node . N t <$> mapM svalueOf ps
 
 -- | Convert a runtime value to an address value
 val2addr :: (DC m) => Value -> Definitional m Address
@@ -298,12 +298,11 @@ unit = pure Unit
 -- right hand side of the bind.
 -- See in lazyAdd or in sumSimple
 bindPattern :: (DC m) => Value -> (Grin.Tag, [Grin.Name]) -> Definitional m [(Grin.Name, Value)]
-bindPattern val tags =
-  -- Exercise: The val should be a Node value, if the tag of the node matches, with the given
-  -- tag, than the args argument from the Node value must be paired with the names in the
-  -- given pattern.
-  -- TODO: Add reference to the examples.
-  undefined
+bindPattern (Prim p)        tagPat  = error $ show (p, tagPat)
+bindPattern Unit            tagPat  = error $ show (Unit, tagPat)
+bindPattern (Node (N t vs)) (t',ns)
+  | t == t' = pure $ zip ns (Prim <$> vs)
+  | otherwise = error $ show ((t',ns), (t,vs))
 
 -- | Return the environment, which associates  names with values
 askEnv :: (DC m) => Definitional m (Env Value)
@@ -322,16 +321,13 @@ lookupFun funName = fromJust <$> view (_1 . to functions . at funName)
 -- | Checks if the given name refers to an external function.
 isExternal :: (DC m) => Grin.Name -> Definitional m Bool
 isExternal extName =
-  -- Exercise: Use MonadReader to retrieve the Context and lookup the
-  -- the extName in the context
-  undefined
+  asks (Map.member extName . externals . fst)
 
 -- | Run the given external with the parameters
 external :: (DC m) => Grin.Name -> [Value] -> Definitional m Value
-external =
-  -- Exercise: Use the MonadReader to retrieve the Context and lookup
-  -- the function and apply the parameters to it
-  undefined
+external extName vals = do
+  Just extFun <- asks (Map.lookup extName . externals . fst)
+  liftIO $ extFun vals
 
 funCall
   :: (DC m)
@@ -343,19 +339,28 @@ funCall ev funName values =
   -- Retrieve its (Def params body)
   -- Create an empty env and bind the function parameters to the given values
   -- Run the eval function on the created new local env and body
-  undefined
+  do Just (Def _ ps body) <- asks (Map.lookup funName . functions . fst)
+     let newEnv = Env.inserts (zip ps values) Env.empty
+     localEnv newEnv $ ev body
 
 evalCase
   :: (DC m)
   => (Exp -> Definitional m Value)
   -> Value -> [Alt] -> Definitional m Value
-evalCase ev =
+evalCase ev val alts =
   -- Exercise:
   -- Find the first Alt that matches the given value.
   -- If the Alt has a Node pattern, the Val must be a Node
   -- In that case bind the values to the names defined in the Alt pattern
   -- create a new local environment and evaluate the body of the alt in it.
-  undefined
+  do let (binds, body) = head $ mapMaybe (matchAlt val) alts
+     p <- askEnv
+     localEnv (Env.inserts binds p) $ ev body
+  where
+    matchAlt _                (Alt DefaultPat     body) = Just ([], body)
+    matchAlt (Prim l)         (Alt (LitPat l')    body) | l == simpleValue l' = Just ([], body)
+    matchAlt (Node (N t' xs)) (Alt (NodePat t vs) body) | t == t' = Just (zip vs (Prim <$> xs), body)
+    matchAlt _                _                         = Nothing
 
 -- | Creates a location for a given name. This is particular for the GRIN store structure,
 -- where the Store operation must be part of a Bind, thus there will be always a name to
@@ -372,13 +377,13 @@ allocStore _name = do
 fetchStore :: (DC m) => Value -> Definitional m Value
 fetchStore addr = do
   s <- get
-  a <- undefined addr
+  a <- val2addr addr
   heapVal2val $ Store.lookup a s
 
 -- | Extends the store with the given value.
 extStore :: (DC m) => Value -> Value -> Definitional m ()
 extStore addr val = do
-  a <- undefined addr
+  a <- val2addr addr
   n <- val2heapVal val
   modify (Store.insert a n)
 
