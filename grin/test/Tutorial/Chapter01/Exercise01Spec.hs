@@ -47,7 +47,7 @@ fact =
     [ External "prim_int_sub"   (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64] False
     , External "prim_int_mul"   (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64] False
     , External "prim_int_eq"    (TySimple T_Bool)   [TySimple T_Int64, TySimple T_Int64] False
-    , External "prim_int_print" (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64] True
+    , External "prim_int_print" (TySimple T_Unit)   [TySimple T_Int64, TySimple T_Int64] True
     ]
     [ Def "fact" ["f1"] $
         EBind (SPure (Val (VPrim (SInt64 0)))) (BVar "f2") $
@@ -76,7 +76,7 @@ sumSimple =
     , External "prim_int_sub"   (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64] False
     , External "prim_int_eq"    (TySimple T_Bool)   [TySimple T_Int64, TySimple T_Int64] False
     , External "prim_int_gt"    (TySimple T_Bool)   [TySimple T_Int64, TySimple T_Int64] False
-    , External "prim_int_print" (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64] True
+    , External "prim_int_print" (TySimple T_Unit)   [TySimple T_Int64, TySimple T_Int64] True
     ]
     [ Def "main" [] $
         EBind (SPure (Val (VPrim (SInt64 1)))) (BVar "m1") $

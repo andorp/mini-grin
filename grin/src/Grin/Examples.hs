@@ -11,7 +11,7 @@ import Grin.Value
   )
 
 import Grin.TypeEnv
-  ( SimpleType(T_Int64, T_Bool)
+  ( SimpleType(T_Int64, T_Bool, T_Unit)
   , Ty(TySimple)
   )
 
@@ -27,9 +27,6 @@ import Grin.GExp
   )
 
 -- * Test expression
-
--- NOTE: explain data ctors, explain every first example
--- NOTE: smaller example to demostrate heap operations
 
 {-
 primop pure
@@ -66,7 +63,7 @@ add =
 prim_int_sub :: T_Int64 -> T_Int64 -> T_Int64
 prim_int_mul :: T_Int64 -> T_Int64 -> T_Int64
 prim_int_eq :: T_Int64 -> T_Int64 -> T_Bool
-prim_int_print :: T_Int64 -> T_Int64 -> T_Int64
+prim_int_print :: T_Int64 -> T_Int64 -> T_Unit
 
 fact f1 =
   f2 <- pure 0
@@ -94,7 +91,7 @@ fact =
     [ External "prim_int_sub"   (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64] False
     , External "prim_int_mul"   (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64] False
     , External "prim_int_eq"    (TySimple T_Bool)   [TySimple T_Int64, TySimple T_Int64] False
-    , External "prim_int_print" (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64] True
+    , External "prim_int_print" (TySimple T_Unit)   [TySimple T_Int64, TySimple T_Int64] True
     ]
     [ Def "fact" ["f1"] $
         Bind (Pure (Val (VPrim (SInt64 0)))) (BVar "f2") $
@@ -123,7 +120,7 @@ prim_int_add :: T_Int64 -> T_Int64 -> T_Int64
 prim_int_sub :: T_Int64 -> T_Int64 -> T_Int64
 prim_int_eq :: T_Int64 -> T_Int64 -> T_Bool
 prim_int_gt :: T_Int64 -> T_Int64 -> T_Bool
-prim_int_print :: T_Int64 -> T_Int64 -> T_Int64
+prim_int_print :: T_Int64 -> T_Int64 -> T_Unit
 
 main =
   m1 <- pure 1
@@ -197,7 +194,7 @@ sumSimple =
     , External "prim_int_sub"   (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64] False
     , External "prim_int_eq"    (TySimple T_Bool)   [TySimple T_Int64, TySimple T_Int64] False
     , External "prim_int_gt"    (TySimple T_Bool)   [TySimple T_Int64, TySimple T_Int64] False
-    , External "prim_int_print" (TySimple T_Int64)  [TySimple T_Int64, TySimple T_Int64] True
+    , External "prim_int_print" (TySimple T_Unit)   [TySimple T_Int64, TySimple T_Int64] True
     ]
     [ Def "main" [] $
         Bind (Pure (Val (VPrim (SInt64 1)))) (BVar "m1") $

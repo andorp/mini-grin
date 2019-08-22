@@ -13,7 +13,7 @@ import Data.Maybe (fromJust)
 import Data.Maybe (isNothing)
 import Grin.Exp (Program, eName, externals, Exp(SApp))
 import Grin.TypeEnv hiding (TypeEnv(..), Loc)
-import Grin.Value (Name)
+import Grin.Value (Name, SimpleValue)
 import Grin.Interpreter.Base (baseEval)
 import Grin.Pretty hiding (SChar)
 import Prelude hiding (fail)
@@ -73,6 +73,9 @@ tToType ml = \case
   UT   -> T_SimpleType $ T_Unit
   ST s -> T_SimpleType $ stToSimpleType ml s
   NT (Node t ps) -> T_NodeSet $ Map.singleton t (stToSimpleType ml <$> ps)
+
+typeOfValue :: Grin.Value.SimpleValue -> Type
+typeOfValue = tToType mempty . typeOfSimpleValue
 
 stToSimpleType :: Map.Map Loc Int -> ST -> SimpleType
 stToSimpleType ml = \case

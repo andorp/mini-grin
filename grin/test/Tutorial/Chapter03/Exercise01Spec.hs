@@ -8,13 +8,16 @@ import Grin.Exp (programToDefs)
 import Grin.GExp
 import Grin.GExpToExp
 import qualified Data.Map as Map
+-- import Grin.Pretty (PP(..))
 
 
 spec :: Spec
 spec = do
   it "Inlive eval works for a simple function" $ do
     let ex = gexpToExp evalExp
+--    print $ PP ex
     let expInlinedEval = inlineEval ex
+--    print $ PP expInlinedEval
     resBefore <- interpreter knownExternals ex
     resAfter  <- interpreter knownExternals expInlinedEval
     let defs = programToDefs expInlinedEval
@@ -34,7 +37,9 @@ evalExp =
         Bind (Pure (Val (VNode (Node (Tag C "Int") ["m4"])))) (BVar "m5") $
         Bind (Store "m5") (BVar "m6") $
         Bind (Pure (Val (VNode (Node (Tag F "add") ["m3", "m6"])))) (BVar "m7") $
-        Pure (Var "m7")
+        Bind (Store "m7") (BVar "m8") $
+        Bind (App ("eval") ["m8"]) (BVar "m9") $
+        Pure (Var "m9")
 
     , Def "add" ["a1", "a2"] $
         Bind (App "eval" ["a1"]) (BNodePat (Tag C "Int") ["a3"]) $

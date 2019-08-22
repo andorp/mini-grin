@@ -39,6 +39,8 @@ Exercise:
 Read the "2 From Machines to Compositional Evaluators"
 https://plum-umd.github.io/abstracting-definitional-interpreters/#%28part._s~3aaam%29
 
+Although GRIN is not a higher-order lanuage, we use the AAM approach.
+
 Exercise:
 Find the difference between the interpreter from the previous exercise.
 -}
@@ -88,19 +90,19 @@ eval ev = \case
     let v = Env.lookup p n
     a  <- allocStore l
     extStore a v
-    let p' = Env.insert [(l, a)] p
+    let p' = Env.insert l a p
     localEnv p' (ev rhs)
 
   EBind lhs (BVar n) rhs -> do
     v <- ev lhs
     p <- askEnv
-    let p' = Env.insert [(n, v)] p
+    let p' = Env.insert n v p
     localEnv p' (ev rhs)
 
   EBind lhs (BNodePat t@(Tag{}) vs) rhs -> do
     v   <- ev lhs
     p   <- askEnv
-    p'  <- flip Env.insert p <$> bindPattern v (t,vs)
+    p'  <- flip Env.inserts p <$> bindPattern v (t,vs)
     localEnv p' (ev rhs)
 
   EBind lhs BUnit rhs -> do
@@ -113,42 +115,46 @@ eval ev = \case
   overGenerative -> error $ show overGenerative
 
 {-
+Solution:
+The differences are, the open recursion style and the application of the typeclass.
+-}
+
+{-
 Exercise:
-Discuss why the associated types are necessary.
+Discuss with somebody why the associated types are necessary, in this formalism?
+Diccuss why is necessary to include the 'm' type in the type of the return values.
 Understand the type signatures.
 -}
 class (Monad m, MonadFail m) => Interpreter m where
-  type Val     m :: * -- ^ Values that can be placed in registers/variables
-  type HeapVal m :: * -- ^ Values for the Store, Fetch, Update parameters
-  type Addr    m :: * -- ^ A type to represent Addresses
+  type Val     m :: * -- Values that can be placed in registers/variables
+  type HeapVal m :: * -- Values for the Store, Fetch, Update parameters
+  type Addr    m :: * -- A type to represent an Address
 
   -- Conversions, but m type is needed for type inference
-  value       :: Grin.Value   -> m (Val m)  -- Value of the given literal
-  val2addr    :: Val m        -> m (Addr m)
-  addr2val    :: Addr m       -> m (Val m)
-  heapVal2val :: HeapVal m    -> m (Val m)
-  val2heapVal :: Val m        -> m (HeapVal m)
-  unit        :: m (Val m) -- The unit value
-  bindPattern :: Val m -> (Tag, [Name]) -> m [(Name, Val m)]
-
-  -- Non-pure
+  value       :: Grin.Value   -> m (Val m)      -- Value of the given literal
+  val2addr    :: Val m        -> m (Addr m)     -- Convert a value to an Address value
+  addr2val    :: Addr m       -> m (Val m)      -- Convert an address value to a Value
+  heapVal2val :: HeapVal m    -> m (Val m)      -- Convert a heap value to a value to be able to assign it to a register
+  val2heapVal :: Val m        -> m (HeapVal m)  -- Convert a value to a heap value to be able to store it on the Heap
+  unit        :: m (Val m)                      -- The unit value
+  bindPattern :: Val m -> (Tag, [Name]) -> m [(Name, Val m)] -- Create a list of bindings matching the value of the given and variable-names
 
   -- | Return the computational environment
   askEnv        :: m (Env (Val m))
   -- | Set the local environment
-  localEnv      :: Env (Val m) -> m (Val m) -> m (Val m)
-  lookupFun     :: Name -> m Exp
-  isExternal    :: Name -> m Bool
-  external      :: Name -> [Val m] -> m (Val m)
+  localEnv      :: Env (Val m) -> m (Val m) -> m (Val m)  -- Set the local environment to the given one
+  lookupFun     :: Name -> m Exp                          -- Lookup up a function definition
+  isExternal    :: Name -> m Bool                         -- Check if the given name refers to an external function
+  external      :: Name -> [Val m] -> m (Val m)           -- Evaluate the external function
 
   -- Control-flow
-  evalCase      :: (Exp -> m (Val m)) -> Val m -> [Alt] -> m (Val m)
-  funCall       :: (Exp -> m (Val m)) -> Name -> [Val m] -> m (Val m)
+  evalCase      :: (Exp -> m (Val m)) -> Val m -> [Alt] -> m (Val m)  -- Select an alternative based on the given value and evaluate it
+  funCall       :: (Exp -> m (Val m)) -> Name -> [Val m] -> m (Val m) -- Lookup a function and apply to the parameters
 
   -- Store
-  allocStore    :: Name -> m (Val m)
-  fetchStore    :: Val m -> m (Val m)
-  extStore      :: Val m -> Val m -> m ()
+  allocStore    :: Name -> m (Val m)       -- Allocate a new heap location
+  fetchStore    :: Val m -> m (Val m)      -- Fetch the Heap value stored in the heap location
+  extStore      :: Val m -> Val m -> m ()  -- Extend the heap location with the given store
 
 {-
 After all the previous implementation of the interpreter can be reused in the

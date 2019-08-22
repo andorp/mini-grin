@@ -29,14 +29,6 @@ import Grin.Interpreter.Abstract.Base
 
 
 
-typeOfSimpleValue :: Grin.SimpleValue -> T
-typeOfSimpleValue = \case
-  Grin.SInt64  _ -> ST ST_Int64
-  Grin.SWord64 _ -> ST ST_Word64
-  Grin.SFloat  _ -> ST ST_Float
-  Grin.SBool   _ -> ST ST_Bool
-  Grin.SChar   _ -> ST ST_Char
-
 getCacheOut :: (Monad m) => AbstractT m Cache
 getCacheOut = AbstractT $ RWST $ \_ae as -> LogicT $ \sk fk -> do
   (_, outC) <- get
@@ -170,14 +162,14 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
       extendAlt alt@(Alt (NodePat _ ns) _body) = case v of
         NT (Node _t0 vs) -> do
           p <- askEnv
-          localEnv (Env.insert (ns `zip` (ST <$> vs)) p) $ ev0 alt
+          localEnv (Env.inserts (ns `zip` (ST <$> vs)) p) $ ev0 alt
         nonNodeType -> error $ show nonNodeType
       extendAlt overGenerative = error $ show overGenerative
 
   funCall :: (Exp -> AbstractT m T) -> Name -> [T] -> AbstractT m T
   funCall ev0 fn vs = do
     (Def _ fps body) <- lookupFun fn
-    let p' = Env.insert (fps `zip` vs) Env.empty
+    let p' = Env.inserts (fps `zip` vs) Env.empty
     v <- localEnv p' (ev0 body)
     collectFunctionType (fn,vs,v)
     pure v

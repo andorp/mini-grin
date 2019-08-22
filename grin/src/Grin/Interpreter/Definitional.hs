@@ -153,7 +153,7 @@ instance (Applicative m, Monad m, MonadFail m) => Interpreter (DefinitionalT m) 
       evalBranch (DNode (Node t0 vs)) (Alt (NodePat t1 nps) body)
         | t0 == t1 = do
             p <- askEnv
-            let p' = Env.insert (nps `zip` (DVal <$> vs)) p
+            let p' = Env.inserts (nps `zip` (DVal <$> vs)) p
             localEnv p' (ev0 body)
       evalBranch _                    (Alt _               body) = ev0 body
       evalBranch pat alt = error $ "evalBranch: " ++ show (pat, alt)
@@ -161,7 +161,7 @@ instance (Applicative m, Monad m, MonadFail m) => Interpreter (DefinitionalT m) 
   funCall :: (Exp -> DefinitionalT m DVal) -> Name -> [DVal] -> DefinitionalT m DVal
   funCall ev0 fn vs = do
     (Def _ fps body) <- lookupFun fn
-    let p' = Env.insert (fps `zip` vs) Env.empty
+    let p' = Env.inserts (fps `zip` vs) Env.empty
     localEnv p' (ev0 body)
 
   allocStore :: Name -> DefinitionalT m DVal

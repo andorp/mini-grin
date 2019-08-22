@@ -58,19 +58,19 @@ baseEval ev0 = \case
     let v = Env.lookup p n
     a  <- allocStore l
     extStore a v
-    let p' = Env.insert [(l, a)] p
+    let p' = Env.insert l a p
     localEnv p' (ev0 rhs)
 
   EBind lhs (BVar n) rhs -> do
     v <- ev0 lhs
     p <- askEnv
-    let p' = Env.insert [(n, v)] p
+    let p' = Env.insert n v p
     localEnv p' (ev0 rhs)
 
   EBind lhs (BNodePat t@(Tag{}) vs) rhs -> do
     v   <- ev0 lhs
     p   <- askEnv
-    p'  <- flip Env.insert p <$> bindPattern v (t,vs)
+    p'  <- flip Env.inserts p <$> bindPattern v (t,vs)
     localEnv p' (ev0 rhs)
 
   EBind lhs BUnit rhs -> do
@@ -85,9 +85,9 @@ baseEval ev0 = \case
 -- Type class
 
 class (Monad m, MonadFail m) => Interpreter m where
-  type Val     m :: * -- ^ Values that can be placed in registers/variables
-  type HeapVal m :: * -- ^ Values for the Store, Fetch, Update parameters
-  type Addr    m :: * -- ^ A type to represent Addresses
+  type Val     m :: * -- Values that can be placed in registers/variables
+  type HeapVal m :: * -- Values for the Store, Fetch, Update parameters
+  type Addr    m :: * -- A type to represent an Address
 
   -- Conversions, but m type is needed for type inference
   value       :: Grin.Value   -> m (Val m)  -- Value of the given literal

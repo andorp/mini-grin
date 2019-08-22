@@ -29,7 +29,7 @@ program in transformation and analyses.
 
 Exercise:
 Open the Grin.Examples module and take a look at the
-three examples to build an intuition about the GRIN language
+examples to build an intuition about the GRIN language
 and about the GADT represented syntax.
 
 Exercise:

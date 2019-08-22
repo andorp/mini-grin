@@ -9,11 +9,12 @@ import Control.Monad.Reader (MonadReader(..))
 import Control.Monad.State (MonadState(..), modify)
 import Data.Maybe (fromMaybe, fromJust, isNothing)
 import Data.Function (fix)
-import Grin.Exp (Exp(..), Alt, Program, externals, eName)
+import Grin.Exp (Exp(..), CPat(..), Alt, Program, externals, eName)
 import qualified Grin.TypeEnv as Grin
 import Grin.Value hiding (Val, Node)
 import Lens.Micro.Platform
 import Prelude hiding (fail)
+import Data.Maybe (mapMaybe)
 
 import Grin.Interpreter.Env (Env)
 import Grin.Interpreter.Store (Store(..))
@@ -25,10 +26,10 @@ import qualified Grin.Value as Grin
 
 import Grin.Interpreter.Abstract.Base
   ( AbstractT(..), Cache, TypeEnv, T(..), ST(..), Loc(..), AbsStore(..), AbsEnv(..), AbsState(..), Node(..)
-  , runAbstractT, absStr, absEnv, forMonadPlus
+  , runAbstractT, absStr, absEnv, forMonadPlus, typeOfSimpleValue
   )
 import Grin.Interpreter.Abstract.Interpreter
-  ( evalCache, fixCache, collectFunctionType, collectEnv, typeOfSimpleValue
+  ( evalCache, fixCache, collectFunctionType, collectEnv
   )
 import Grin.Interpreter.Abstract.TypeInference (calcTypeEnv)
 
@@ -41,8 +42,18 @@ Exercise:
 Read the 'Abstracting Closures' from
 https://plum-umd.github.io/abstracting-definitional-interpreters/#%28part._s~3aabstracting-closures%29
 
+Despite the Chapter 3.3 describes how to store closures, in GRIN there is no such thing. The take-away
+from that chapter is that the heap now should contain a Set of Node values, which are joined when
+the non-deterministic choice happen in the control flow.
+
+Exercise: Read Chatper 3.2.1
+https://nbviewer.jupyter.org/github/grin-compiler/grin/blob/master/papers/boquist.pdf#page=83
+
 Exercise:
 Read the Grin.Interpreter.Abstract.Base module
+
+One simple abstract interpretation of a GRIN program is the type inference, of the GRIN variables, functions,
+and Heap locations.
 -}
 
 
@@ -131,12 +142,18 @@ instance (Monad m, MonadIO m, MonadFail m) => Exercise.Interpreter (AbstractT m)
 
   external :: Name -> [T] -> AbstractT m T
   external n ps = do
-    -- Exercise
+    -- Exercise:
+    -- Lookup the environment, check if the given parameters has the same type if not throw an 'error'
+    -- If they have the same type than return the return type of the external.
+    -- Use the collectFunctionType to register the learn types of the function
     undefined
 
   funCall :: (Exp -> AbstractT m T) -> Name -> [T] -> AbstractT m T
   funCall ev0 fn vs = do
-    -- Exercise
+    -- Exercise:
+    -- Lookup the (Def _ ps body) constructor of the function, create a new environment binding its
+    -- arguments to the given values to call with, after the return of the function register its
+    -- type with the collectFunctionType
     undefined
 
   allocStore :: Name -> AbstractT m T

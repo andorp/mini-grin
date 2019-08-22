@@ -5,7 +5,7 @@ module Tutorial.Chapter01.Exercise02 where
 import Data.Int
 import Data.Word
 import Data.Maybe
-import Grin.Exp (Exp(..), Program, Alt, BPat(..), programToDefs)
+import Grin.Exp (Exp(..), Program, Alt, BPat(..), CPat(..), programToDefs)
 import Control.Monad.Fail
 import Control.Monad.Reader
 import Control.Monad.State
@@ -40,7 +40,7 @@ Exercise: Read the Grin.Interpreter.Store module
 
 During the interpretation
  * The environment associates variables with values
-   which can be of three types:
+   which can be of three kinds:
     * Primitive (SValue)
     * Node
     * Unit
@@ -51,19 +51,6 @@ During the interpretation
 Note:
 GRIN programs are in Static Single Assignment form,
 which means rebinding a variable is illegal.
-
-
--- NOTE: extract this to somewhere in the beginning
-GRIN stands for Graph Reduction Intermediate Notation, and is
-a compiler back end for functional languages. As its name
-suggests, GRIN can be used to express graph reduction semantics
-and hence can be used to compile functional languages.
-
-In GRIN, a node in the graph is represented as a C-stlye struct.
-The Heap can only contain Node values and nothing else.
-These Node values stored on the Heap are the nodes of the functional program's
-graph. The reduction of this graph is done through the primitive
-heap operations of GRIN (store, fetch, update).
 
 Exercise: Read the definition of Value, Node and SValue types below. These types represent
 values in a running interpreter.
@@ -92,34 +79,32 @@ type Address = Int
 
 {-
 The structure of the interpreter can be represented as a Monad Transformer, which
-operates on a given 'm' Monad, which can run arbitrary IO computations.
+operates on a given Monad 'm', which can run arbitrary IO computations.
 
 The Env represents the frame, which holds values for variables. The MonadReader abstraction
 fits well with the frame abstraction.
 
--- NOTE: name of operations first
-The Store associates Addresses with Node values, during the execution of the program,
-contents of the heap location associated with the given address can change.
- * A new address is allocated using the Store operation, which creates a new heap
-   location saves the value of which was given to the Store operation via a variable
-   which value must be looked up from the Env.
+The Heap associates Addresses with Node values, during the execution of the program,
+contents of the heap location associated with the given address may change.
+
+ * Store: A new address is allocated using the Store operation, which creates a new heap
+   location, saves the value of which was given to the Store operation via a variable
+   those value must be looked up from the Env.
    The store operation returns the newly created address.
- * The content of a given address can be retrieved using the Fetch operation. The
+ * Fetch: The content of a given address can be retrieved using the Fetch operation. The
    parameter of the operation is a variable which holds an address value.
- * The content of an address can be overwritten using the Update operation.
+ * Update: The content of an address can be overwritten using the Update operation.
 -}
 
+-- | How to interpret External names in the interpreter.
 type InterpretExternal = Map.Map Grin.Name ([Value] -> IO Value)
 
--- NOTE: more descriptive name
 data Functions = Functions
-  { functions :: Map.Map Grin.Name Exp
-  , externals :: InterpretExternal
+  { functions :: Map.Map Grin.Name Exp -- Functions defined within the GRIN program
+  , externals :: InterpretExternal     -- Externals used within the GRIN program
   }
 
 
--- NOTE: Reader env can change
--- NOTE: IO is neeed to call externals
 newtype Definitional m a =
     Definitional
       (RWST -- Reader Writer State Monad Transformer
@@ -168,6 +153,8 @@ interpreter iext prog =
       (a,store,()) <- runRWST r (funs, Env.empty) Store.empty
       pure (a,store)
 
+-- * Implementation details
+
 -- | Turns a Simple Value from a syntax to a simple value of the semantics.
 simpleValue :: Grin.SimpleValue -> SValue
 simpleValue = \case
@@ -188,29 +175,36 @@ svalueOf name = do
   pure sv
 
 -- | Creates a new location that can be used in the Store operation.
+-- The size of the underlying Map will be always the last created location +1,
+-- which serves the purpose of a new address.
 alloc :: (DC m) => Definitional m Address
 alloc = gets Store.size
 
-
-
+-- The Eval function, that operates on the Expression part of the GRIN AST.
 eval :: (DC m) => Exp -> Definitional m Value
 eval = \case
+  -- Evaluates the given value, assigning a semantical value to a syntactical one.
   SPure (Grin.Val l) -> value l
+
+  -- Looks up a variable form the active environment
   SPure (Grin.Var n) -> do
     p <- askEnv
     pure $ Env.lookup p n
 
+  -- Calls a function, external or GRIN defined internal.
   SApp fn ps -> do
     p <- askEnv
     vs <- pure $ map (Env.lookup p) ps
     ext <- isExternal fn
     (if ext then external else funCall eval) fn vs
 
+  -- Fetches a value from the heap.
   SFetch n -> do
     p <- askEnv
     let v = Env.lookup p n
     fetchStore v
 
+  -- Updates the given location with the given value.
   SUpdate nl nn -> do
     p <- askEnv
     let vl = Env.lookup p nl
@@ -218,45 +212,54 @@ eval = \case
     extStore vl vn
     unit
 
+  -- Matches the given value with one of the alternatives.
   ECase n alts -> do
     p <- askEnv
     v <- pure $ Env.lookup p n
     -- Select the alternative and continue the evaluation
     evalCase eval v alts
 
+  -- Handling stores are differen. Create a new location, saves the given node value
+  -- to the location, and assignes the created location value to the variable in the Bind pattern.
   EBind (SStore n) (BVar l) rhs -> do
     p <- askEnv
     let v = Env.lookup p n
     a  <- allocStore l
     extStore a v
-    let p' = Env.insert [(l, a)] p
+    let p' = Env.insert l a p
     localEnv p' $ eval rhs
 
-  EBind lhs (BVar n) rhs -> do
-    v <- eval lhs
-    p <- askEnv
-    let p' = Env.insert [(n, v)] p
-    localEnv p' (eval rhs)
-
-  EBind lhs (BNodePat t@(Grin.Tag{}) vs) rhs -> do
-    v   <- eval lhs
-    p   <- askEnv
-    p'  <- flip Env.insert p <$> bindPattern v (t,vs)
-    localEnv p' (eval rhs)
-
+  -- Evaluates the left expression, than evaluates the right expression, returns the
+  -- value of the right.
   EBind lhs BUnit rhs -> do
     void $ eval lhs
     eval rhs
 
+  -- Evaluates the left expression, than binds its return value to the variable
+  -- extending the environment, run the right epxression with the extended
+  -- environemnt and returns its value.
+  EBind lhs (BVar n) rhs -> do
+    v <- eval lhs
+    p <- askEnv
+    let p' = Env.insert n v p
+    localEnv p' (eval rhs)
+
+  -- Evaluates the left expression, than binds its return value to the variables
+  -- in the bind pattern if the tag of the computed value matches,
+  -- extending the environment, run the right epxression with the extended
+  -- environemnt and returns its value.
+  EBind lhs (BNodePat t@(Grin.Tag{}) vs) rhs -> do
+    v   <- eval lhs
+    p   <- askEnv
+    p'  <- flip Env.inserts p <$> bindPattern v (t,vs)
+    localEnv p' (eval rhs)
+
+  -- After the Case selected the Alternative it just needs to evaluate its body.
   Alt _pat body -> do
     eval body
 
   overGenerative -> error $ show overGenerative
 
-{-
-TODO:
-Explain terminilogy
--}
 
 -- | How to turn a source defined value to a runtime value
 value :: (DC m) => Grin.Value -> Definitional m Value
@@ -293,6 +296,7 @@ unit = pure Unit
 
 -- | Creates a list of Name and runtime value pairs which extends the environment for the
 -- right hand side of the bind.
+-- See in lazyAdd or in sumSimple
 bindPattern :: (DC m) => Value -> (Grin.Tag, [Grin.Name]) -> Definitional m [(Grin.Name, Value)]
 bindPattern val tags =
   -- Exercise: The val should be a Node value, if the tag of the node matches, with the given
@@ -305,7 +309,7 @@ bindPattern val tags =
 askEnv :: (DC m) => Definitional m (Env Value)
 askEnv = asks snd
 
--- | Sets the environment to the one given, this is for binds, function calls,
+-- | Sets the environment to the given one, this is for binds, function calls,
 -- and alternatives.
 localEnv :: (DC m) => Env (Value) -> Definitional m Value -> Definitional m Value
 localEnv env = local (set _2 env)

@@ -19,11 +19,13 @@ empty = Env mempty
 lookup :: (Env v) -> Name -> v
 lookup (Env m) n = fromMaybe (error $ "Missing:" ++ show n) $ Map.lookup n m
 
--- NOTE: plural?
-insert :: [(Name, v)] -> Env v -> Env v
-insert vs (Env m) = Env $ foldl' (\n (k,v) -> Map.insert k v n) m vs
+insert :: Name -> v -> Env v -> Env v
+insert n v (Env m) = Env $ Map.insert n v m
 
--- NOTE: explicit instance!! different from default
+inserts :: [(Name, v)] -> Env v -> Env v
+inserts vs (Env m) = Env $ foldl' (\n (k,v) -> Map.insert k v n) m vs
+
+-- Explicit instance!! different from default
 instance (Semigroup v) => Semigroup (Env v) where
   Env m1 <> Env m2 = Env (Map.unionWith (<>) m1 m2)
 

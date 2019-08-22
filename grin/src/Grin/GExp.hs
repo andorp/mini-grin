@@ -13,7 +13,6 @@ import Grin.TypeEnv
 import GHC.TypeLits
 
 
--- TODO: Explanation
 data ExpCtx
   = Simple    -- Simple Expressions
   | Bind_     -- Expressions
@@ -22,8 +21,6 @@ data ExpCtx
   | Def_      -- Function definitions
   | Prg       -- Program definition
 
--- TODO: Comment on the expressions
--- TODO: Link GADT syntax
 data Exp (ctx :: ExpCtx) where
 
   Program
