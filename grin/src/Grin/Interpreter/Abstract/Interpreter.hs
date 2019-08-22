@@ -207,7 +207,8 @@ evalCache ev0 ev1 e = do
     Nothing -> do
       ev0 ev1 e
     Just ce -> do
-      let c = Config { cfgExp = ce }
+      s <- getStore
+      let c = Config { cfgExp = ce, cfgStore = s }
       outc <- getCacheOut
       if inCache c outc
         then do

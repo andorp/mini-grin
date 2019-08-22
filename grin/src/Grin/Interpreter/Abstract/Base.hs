@@ -159,7 +159,8 @@ data CExp = CApp Name [Name]
 
 -- | The visited configuration
 data Config = Config
-  { cfgExp :: CExp -- The function which was called
+  { cfgExp    :: CExp     -- The function which was called
+  , cfgStore  :: AbsStore -- The abstract store in which this configuration is called.
   } deriving (Eq, Show, Ord)
 
 -- | The cache associates a function call
@@ -169,9 +170,6 @@ data Cache = Cache (Map.Map Config (Set.Set (T, AbsStore)))
 
 
 -- * Cache operations
-
-cacheSize :: Cache -> [Int]
-cacheSize (Cache m) = Map.elems $ fmap Set.size m
 
 inCache :: Config -> Cache -> Bool
 inCache c (Cache m) = Map.member c m
