@@ -73,11 +73,11 @@ instance (Monad m, MonadIO m, MonadFail m) => Exercise.Interpreter (AbstractT m)
     forMonadPlus (Set.toList $ Store.lookup a s) heapVal2val
 
   bindPattern :: T -> (Tag, [Name]) -> AbstractT m [(Name, T)]
-  bindPattern t (tag,ps) =
-    -- Exercise: Similar to the bindPattern in the definitional interpreter
-    -- match the tag from the value with the names and return the association list.
-    -- If the tag doesn't match use the mzero instead of throwing an error.
-    undefined
+  bindPattern (ST _) _ = mzero
+  bindPattern UT     _ = mzero
+  bindPattern (NT (Node t vs)) (t',ns)
+    | t == t' = pure $ zip ns (ST <$> vs)
+    | otherwise = mzero
 
   evalCase :: (Exp -> AbstractT m T) -> T -> [Alt] -> AbstractT m T
   evalCase ev0 v alts =
@@ -85,7 +85,14 @@ instance (Monad m, MonadIO m, MonadFail m) => Exercise.Interpreter (AbstractT m)
     -- the matching alts. Using the forMonadPlus operator for all the
     -- matchin ones extend the environment if necessary and evaluate the
     -- body of the alt
-    undefined
+    do let bindsAndBody = mapMaybe (matchAlt v) alts
+       p <- askEnv
+       forMonadPlus bindsAndBody $ \(binds,body) -> localEnv (Env.inserts binds p) (ev0 body)
+    where
+        matchAlt _                 (Alt DefaultPat     body) = Just ([], body)
+        matchAlt (ST l)            (Alt (LitPat l')    body) | (ST l) == (typeOfSimpleValue l') = Just ([], body)
+        matchAlt (NT (Node t' xs)) (Alt (NodePat t vs) body) | t == t' = Just (zip vs (ST <$> xs), body)
+        matchAlt _                _                         = Nothing
 
   extStore :: T -> T -> AbstractT m ()
   extStore v0 v1 = do
@@ -146,7 +153,10 @@ instance (Monad m, MonadIO m, MonadFail m) => Exercise.Interpreter (AbstractT m)
     -- Lookup the environment, check if the given parameters has the same type if not throw an 'error'
     -- If they have the same type than return the return type of the external.
     -- Use the collectFunctionType to register the learn types of the function
-    undefined
+    Just (r,ts) <- ask (Map.lookup n . _absExt) <$> ask
+    unless (and $ zipWith (==) ps ts) $ error $ show (n,ts,ps)
+    collectFunctionType (n,ts,r)
+    pure r
 
   funCall :: (Exp -> AbstractT m T) -> Name -> [T] -> AbstractT m T
   funCall ev0 fn vs = do
@@ -154,7 +164,11 @@ instance (Monad m, MonadIO m, MonadFail m) => Exercise.Interpreter (AbstractT m)
     -- Lookup the (Def _ ps body) constructor of the function, create a new environment binding its
     -- arguments to the given values to call with, after the return of the function register its
     -- type with the collectFunctionType
-    undefined
+    (Def _ fps body) <- lookupFun fn
+    let p' = Env.inserts (fps `zip` vs) Env.empty
+    v <- localEnv p' (ev0 body)
+    collectFunctionType (fn,vs,v)
+    pure v
 
   allocStore :: Name -> AbstractT m T
   allocStore name = pure $ ST $ ST_Loc $ Loc name
