@@ -50,7 +50,7 @@ convertGExpToExp = \case
   Program  exts defs -> E.Program exts (map convertGExpToExp defs)
 
   -- Exercise: Map the Def constructor to its E.Exp counterpart.
-  Def      n ps body -> undefined
+  Def      n ps body -> E.Def n ps (convertGExpToExp body)
 
   Pure     v         -> E.SPure v
 
@@ -58,20 +58,20 @@ convertGExpToExp = \case
   Store    n         -> E.SStore n
 
   -- Exercise: Map the Fetch constructor to its E.Exp counterpart.
-  Fetch    n         -> undefined
+  Fetch    n         -> E.SFetch n
 
   -- Exercise: Map the Update constructor to its E.Exp counterpart.
-  Update   n v       -> undefined
+  Update   n v       -> E.SUpdate n v
 
   -- Exercise: Map the App constructor to its E.Exp counterpart.
-  App      n ps      -> undefined
+  App      n ps      -> E.SApp n ps
 
   -- Exercise: Turn the body of the alt to an E.Exp
-  Alt      c body    -> E.Alt c undefined
+  Alt      c body    -> E.Alt c (convertGExpToExp body)
 
   -- Exercise: Turn the Case constructor to its E.Exp counterpart.
-  Case     n alts    -> undefined
+  Case     n alts    -> E.ECase n (map convertGExpToExp alts)
 
   -- Exercise: Check what kind of syntactical construction is the Bind
   -- and convert the lhs and rhs to E.Exp, also use the pattern
-  Bind     lhs pat rhs -> E.EBind undefined undefined undefined
+  Bind     lhs pat rhs -> E.EBind (convertGExpToExp lhs) pat (convertGExpToExp rhs)
