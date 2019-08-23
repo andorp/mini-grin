@@ -1,0 +1,169 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE ConstraintKinds #-}</span><span>
+</span><a name="line-2"></a><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Grin.CheatSheet</span><span> </span><span class="hs-keyword">where</span><span>
+</span><a name="line-3"></a><span>
+</span><a name="line-4"></a><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><a href="Grin.Value.html"><span class="hs-identifier">Grin.Value</span></a><span>
+</span><a name="line-5"></a><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><a href="Grin.Exp.html"><span class="hs-identifier">Grin.Exp</span></a><span>
+</span><a name="line-6"></a><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><a href="Grin.GExp.html"><span class="hs-identifier">Grin.GExp</span></a><span>
+</span><a name="line-7"></a><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><a href="Grin.Interpreter.Env.html"><span class="hs-identifier">Grin.Interpreter.Env</span></a><span>
+</span><a name="line-8"></a><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><a href="Grin.Interpreter.Store.html"><span class="hs-identifier">Grin.Interpreter.Store</span></a><span>
+</span><a name="line-9"></a><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><a href="Tutorial.Chapter01.Exercise02.html"><span class="hs-identifier">Tutorial.Chapter01.Exercise02</span></a><span>
+</span><a name="line-10"></a><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><a href="Grin.Interpreter.Abstract.Base.html"><span class="hs-identifier">Grin.Interpreter.Abstract.Base</span></a><span>
+</span><a name="line-11"></a><span>
+</span><a name="line-12"></a><span>
+</span><a name="line-13"></a><span class="hs-comment">-- * Prelude</span><span>
+</span><a name="line-14"></a><span class="hs-comment">--</span><span>
+</span><a name="line-15"></a><span class="hs-comment">-- $prelude</span><span>
+</span><a name="line-16"></a><span class="hs-comment">-- === Introduction:</span><span>
+</span><a name="line-17"></a><span class="hs-comment">-- https://github.com/grin-compiler/presentations/blob/master/2018/haskell-exchange-2018/Grin-HaskellX2018.pdf</span><span>
+</span><a name="line-18"></a><span class="hs-comment">--</span><span>
+</span><a name="line-19"></a><span class="hs-comment">-- === What is GRIN</span><span>
+</span><a name="line-20"></a><span class="hs-comment">-- GRIN stands for Graph Reduction Intermediate Notation, and is</span><span>
+</span><a name="line-21"></a><span class="hs-comment">-- a compiler back end for functional languages. As its name</span><span>
+</span><a name="line-22"></a><span class="hs-comment">-- suggests, GRIN can be used to express graph reduction semantics</span><span>
+</span><a name="line-23"></a><span class="hs-comment">-- and hence can be used to compile functional languages.</span><span>
+</span><a name="line-24"></a><span class="hs-comment">--</span><span>
+</span><a name="line-25"></a><span class="hs-comment">-- In GRIN, a node in the graph is represented as a C-stlye struct.</span><span>
+</span><a name="line-26"></a><span class="hs-comment">-- The Heap can only contain Node values and nothing else.</span><span>
+</span><a name="line-27"></a><span class="hs-comment">-- These Node values stored on the Heap are the nodes of the functional program's</span><span>
+</span><a name="line-28"></a><span class="hs-comment">-- graph. The reduction of this graph is done through the primitive</span><span>
+</span><a name="line-29"></a><span class="hs-comment">-- heap operations of GRIN (store, fetch, update).</span><span>
+</span><a name="line-30"></a><span class="hs-comment">--</span><span>
+</span><a name="line-31"></a><span class="hs-comment">-- === Could you tell it again?</span><span>
+</span><a name="line-32"></a><span class="hs-comment">-- GRIN is a very simple C like language:</span><span>
+</span><a name="line-33"></a><span class="hs-comment">--     * C without pointer arithmetic</span><span>
+</span><a name="line-34"></a><span class="hs-comment">--     * C without loops</span><span>
+</span><a name="line-35"></a><span class="hs-comment">--     * C without types</span><span>
+</span><a name="line-36"></a><span class="hs-comment">--     * Structs called Nodes have a fixed structure, a tag and some non-named arguments</span><span>
+</span><a name="line-37"></a><span class="hs-comment">--     * Switch can match on Nodes</span><span>
+</span><a name="line-38"></a><span class="hs-comment">--     * GRIN codes must be well-formed</span><span>
+</span><a name="line-39"></a><span class="hs-comment">--</span><span>
+</span><a name="line-40"></a><span class="hs-comment">-- === How to run the tests</span><span>
+</span><a name="line-41"></a><span class="hs-comment">-- &gt; stack ghci --test</span><span>
+</span><a name="line-42"></a><span class="hs-comment">-- &gt; :l grin/test/Tutorial/Chapter01/Exercise01Spec.hs</span><span>
+</span><a name="line-43"></a><span class="hs-comment">-- &gt; hspec spec</span><span>
+</span><a name="line-44"></a><span class="hs-comment">--</span><span>
+</span><a name="line-45"></a><span class="hs-comment">-- OR</span><span>
+</span><a name="line-46"></a><span class="hs-comment">--</span><span>
+</span><a name="line-47"></a><span class="hs-comment">-- &gt; stack test --file-watch</span><span>
+</span><a name="line-48"></a><span>
+</span><a name="line-49"></a><span class="hs-comment">-- * Chapter 01 / Exercise 01</span><span>
+</span><a name="line-50"></a><span class="hs-comment">--</span><span>
+</span><a name="line-51"></a><span class="hs-comment">-- $c01e01</span><span>
+</span><a name="line-52"></a><span class="hs-comment">-- === Original Syntax</span><span>
+</span><a name="line-53"></a><span class="hs-comment">-- https://nbviewer.jupyter.org/github/grin-compiler/grin/blob/master/papers/boquist.pdf#page=44</span><span>
+</span><a name="line-54"></a><span class="hs-comment">--</span><span>
+</span><a name="line-55"></a><span class="hs-comment">-- === Sequencing of GRIN opeartions</span><span>
+</span><a name="line-56"></a><span class="hs-comment">-- https://nbviewer.jupyter.org/github/grin-compiler/grin/blob/master/papers/boquist.pdf#page=46</span><span>
+</span><a name="line-57"></a><span class="hs-comment">--</span><span>
+</span><a name="line-58"></a><span class="hs-comment">-- === Link GADT syntax</span><span>
+</span><a name="line-59"></a><span class="hs-comment">-- https://en.wikibooks.org/wiki/Haskell/GADT#GADTs</span><span>
+</span><a name="line-60"></a><span class="hs-comment">--</span><span>
+</span><a name="line-61"></a><span class="hs-comment">-- === Exercise</span><span>
+</span><a name="line-62"></a><span class="hs-comment">-- Implement 'Tutorial.Chapter01.Exercise01.convertGExpToExp'</span><span>
+</span><a name="line-63"></a><span class="hs-comment">-- TODO: Program Graph of SumSimple</span><span>
+</span><a name="line-64"></a><span>
+</span><a name="line-65"></a><span class="hs-keyword">type</span><span> </span><a name="Name"><a href="Grin.CheatSheet.html#Name"><span class="hs-identifier">Name</span></a></a><span>         </span><span class="hs-glyph">=</span><span> </span><a href="Grin.Value.html#Name"><span class="hs-identifier hs-type">Grin.Value.Name</span></a><span>
+</span><a name="line-66"></a><span class="hs-keyword">type</span><span> </span><a name="Tag"><a href="Grin.CheatSheet.html#Tag"><span class="hs-identifier">Tag</span></a></a><span>          </span><span class="hs-glyph">=</span><span> </span><a href="Grin.Value.html#Tag"><span class="hs-identifier hs-type">Grin.Value.Tag</span></a><span>
+</span><a name="line-67"></a><span class="hs-keyword">type</span><span> </span><a name="SimpleValue"><a href="Grin.CheatSheet.html#SimpleValue"><span class="hs-identifier">SimpleValue</span></a></a><span>  </span><span class="hs-glyph">=</span><span> </span><a href="Grin.Value.html#SimpleValue"><span class="hs-identifier hs-type">Grin.Value.SimpleValue</span></a><span>
+</span><a name="line-68"></a><span class="hs-keyword">type</span><span> </span><a name="Node"><a href="Grin.CheatSheet.html#Node"><span class="hs-identifier">Node</span></a></a><span>         </span><span class="hs-glyph">=</span><span> </span><a href="Grin.Value.html#Node"><span class="hs-identifier hs-type">Grin.Value.Node</span></a><span>
+</span><a name="line-69"></a><span class="hs-keyword">type</span><span> </span><a name="Value"><a href="Grin.CheatSheet.html#Value"><span class="hs-identifier">Value</span></a></a><span>        </span><span class="hs-glyph">=</span><span> </span><a href="Grin.Value.html#Value"><span class="hs-identifier hs-type">Grin.Value.Value</span></a><span>
+</span><a name="line-70"></a><span class="hs-keyword">type</span><span> </span><a name="VarOrValue"><a href="Grin.CheatSheet.html#VarOrValue"><span class="hs-identifier">VarOrValue</span></a></a><span>   </span><span class="hs-glyph">=</span><span> </span><a href="Grin.Value.html#VarOrValue"><span class="hs-identifier hs-type">Grin.Value.VarOrValue</span></a><span>
+</span><a name="line-71"></a><span>
+</span><a name="line-72"></a><span class="hs-keyword">type</span><span> </span><a name="External"><a href="Grin.CheatSheet.html#External"><span class="hs-identifier">External</span></a></a><span> </span><span class="hs-glyph">=</span><span> </span><a href="Grin.Exp.html#External"><span class="hs-identifier hs-type">Grin.Exp.External</span></a><span>
+</span><a name="line-73"></a><span class="hs-keyword">type</span><span> </span><a name="CPat"><a href="Grin.CheatSheet.html#CPat"><span class="hs-identifier">CPat</span></a></a><span>     </span><span class="hs-glyph">=</span><span> </span><a href="Grin.Exp.html#CPat"><span class="hs-identifier hs-type">Grin.Exp.CPat</span></a><span>
+</span><a name="line-74"></a><span class="hs-keyword">type</span><span> </span><a name="BPat"><a href="Grin.CheatSheet.html#BPat"><span class="hs-identifier">BPat</span></a></a><span>     </span><span class="hs-glyph">=</span><span> </span><a href="Grin.Exp.html#BPat"><span class="hs-identifier hs-type">Grin.Exp.BPat</span></a><span>
+</span><a name="line-75"></a><span>
+</span><a name="line-76"></a><span class="hs-keyword">type</span><span> </span><a name="ExpCtx"><a href="Grin.CheatSheet.html#ExpCtx"><span class="hs-identifier">ExpCtx</span></a></a><span>   </span><span class="hs-glyph">=</span><span> </span><a href="Grin.GExp.html#ExpCtx"><span class="hs-identifier hs-type">Grin.GExp.ExpCtx</span></a><span>
+</span><a name="line-77"></a><span class="hs-keyword">type</span><span> </span><a name="GExp"><a href="Grin.CheatSheet.html#GExp"><span class="hs-identifier">GExp</span></a></a><span>     </span><span class="hs-glyph">=</span><span> </span><a href="Grin.GExp.html#Exp"><span class="hs-identifier hs-type">Grin.GExp.Exp</span></a><span>
+</span><a name="line-78"></a><span>
+</span><a name="line-79"></a><span class="hs-keyword">type</span><span> </span><a name="Exp"><a href="Grin.CheatSheet.html#Exp"><span class="hs-identifier">Exp</span></a></a><span> </span><span class="hs-glyph">=</span><span> </span><a href="Grin.Exp.html#Exp"><span class="hs-identifier hs-type">Grin.Exp.Exp</span></a><span>
+</span><a name="line-80"></a><span>
+</span><a name="line-81"></a><span>
+</span><a name="line-82"></a><span class="hs-comment">-- * Chapter 01 / Exercise 02</span><span>
+</span><a name="line-83"></a><span class="hs-comment">--</span><span>
+</span><a name="line-84"></a><span class="hs-comment">-- $c01e02</span><span>
+</span><a name="line-85"></a><span class="hs-comment">-- === Semantics</span><span>
+</span><a name="line-86"></a><span class="hs-comment">--     * https://nbviewer.jupyter.org/github/grin-compiler/grin/blob/master/papers/boquist.pdf#page=52</span><span>
+</span><a name="line-87"></a><span class="hs-comment">--     * https://nbviewer.jupyter.org/github/grin-compiler/grin/blob/master/papers/boquist.pdf#page=53</span><span>
+</span><a name="line-88"></a><span class="hs-comment">--     * https://nbviewer.jupyter.org/github/grin-compiler/grin/blob/master/papers/boquist.pdf#page=55</span><span>
+</span><a name="line-89"></a><span class="hs-comment">--</span><span>
+</span><a name="line-90"></a><span class="hs-comment">-- === Exercise</span><span>
+</span><a name="line-91"></a><span class="hs-comment">-- Read the module for exercises &quot;Tutorial.Chapter01.Exercise02&quot;</span><span>
+</span><a name="line-92"></a><span>
+</span><a name="line-93"></a><span class="hs-keyword">type</span><span> </span><a name="Env"><a href="Grin.CheatSheet.html#Env"><span class="hs-identifier">Env</span></a></a><span>   </span><span class="hs-glyph">=</span><span> </span><a href="Grin.Interpreter.Env.html#Env"><span class="hs-identifier hs-type">Grin.Interpreter.Env.Env</span></a><span>
+</span><a name="line-94"></a><span class="hs-keyword">type</span><span> </span><a name="Store"><a href="Grin.CheatSheet.html#Store"><span class="hs-identifier">Store</span></a></a><span> </span><span class="hs-glyph">=</span><span> </span><a href="Grin.Interpreter.Store.html#Store"><span class="hs-identifier hs-type">Grin.Interpreter.Store.Store</span></a><span>
+</span><a name="line-95"></a><span class="hs-keyword">type</span><span> </span><a name="C01E02_Value"><a href="Grin.CheatSheet.html#C01E02_Value"><span class="hs-identifier">C01E02_Value</span></a></a><span> </span><span class="hs-glyph">=</span><span> </span><a href="Tutorial.Chapter01.Exercise02.html#Value"><span class="hs-identifier hs-type">Tutorial.Chapter01.Exercise02.Value</span></a><span>
+</span><a name="line-96"></a><span class="hs-keyword">type</span><span> </span><a name="C01E02_Node"><a href="Grin.CheatSheet.html#C01E02_Node"><span class="hs-identifier">C01E02_Node</span></a></a><span class="hs-glyph">=</span><span> </span><a href="Tutorial.Chapter01.Exercise02.html#Node"><span class="hs-identifier hs-type">Tutorial.Chapter01.Exercise02.Node</span></a><span>
+</span><a name="line-97"></a><span class="hs-keyword">type</span><span> </span><a name="C01E02_SValue"><a href="Grin.CheatSheet.html#C01E02_SValue"><span class="hs-identifier">C01E02_SValue</span></a></a><span> </span><span class="hs-glyph">=</span><span> </span><a href="Tutorial.Chapter01.Exercise02.html#SValue"><span class="hs-identifier hs-type">Tutorial.Chapter01.Exercise02.SValue</span></a><span>
+</span><a name="line-98"></a><span class="hs-keyword">type</span><span> </span><a name="C01E02_Address"><a href="Grin.CheatSheet.html#C01E02_Address"><span class="hs-identifier">C01E02_Address</span></a></a><span> </span><span class="hs-glyph">=</span><span> </span><a href="Tutorial.Chapter01.Exercise02.html#Address"><span class="hs-identifier hs-type">Tutorial.Chapter01.Exercise02.Address</span></a><span>
+</span><a name="line-99"></a><span class="hs-keyword">type</span><span> </span><a name="C01E02_InterpretExternal"><a href="Grin.CheatSheet.html#C01E02_InterpretExternal"><span class="hs-identifier">C01E02_InterpretExternal</span></a></a><span> </span><span class="hs-glyph">=</span><span> </span><a href="Tutorial.Chapter01.Exercise02.html#InterpretExternal"><span class="hs-identifier hs-type">Tutorial.Chapter01.Exercise02.InterpretExternal</span></a><span>
+</span><a name="line-100"></a><span class="hs-keyword">type</span><span> </span><a name="C01E02_Functions"><a href="Grin.CheatSheet.html#C01E02_Functions"><span class="hs-identifier">C01E02_Functions</span></a></a><span> </span><span class="hs-glyph">=</span><span> </span><a href="Tutorial.Chapter01.Exercise02.html#Functions"><span class="hs-identifier hs-type">Tutorial.Chapter01.Exercise02.Functions</span></a><span>
+</span><a name="line-101"></a><span class="hs-keyword">type</span><span> </span><a name="C01E02_Definitional"><a href="Grin.CheatSheet.html#C01E02_Definitional"><span class="hs-identifier">C01E02_Definitional</span></a></a><span> </span><span class="hs-glyph">=</span><span> </span><a href="Tutorial.Chapter01.Exercise02.html#Definitional"><span class="hs-identifier hs-type">Tutorial.Chapter01.Exercise02.Definitional</span></a><span>
+</span><a name="line-102"></a><span>
+</span><a name="line-103"></a><span class="hs-comment">-- * Interlude: Intermediate language to compile from Lambda Calculus to GRIN</span><span>
+</span><a name="line-104"></a><span class="hs-comment">--</span><span>
+</span><a name="line-105"></a><span class="hs-comment">-- $interlude1</span><span>
+</span><a name="line-106"></a><span class="hs-comment">--</span><span>
+</span><a name="line-107"></a><span class="hs-comment">-- === Lambda as an intermediate language</span><span>
+</span><a name="line-108"></a><span class="hs-comment">-- https://nbviewer.jupyter.org/github/grin-compiler/grin/blob/master/papers/boquist.pdf#page=65</span><span>
+</span><a name="line-109"></a><span class="hs-comment">--</span><span>
+</span><a name="line-110"></a><span class="hs-comment">-- === Code generation from Lambda</span><span>
+</span><a name="line-111"></a><span class="hs-comment">-- https://nbviewer.jupyter.org/github/grin-compiler/grin/blob/master/papers/boquist.pdf#page=64</span><span>
+</span><a name="line-112"></a><span>
+</span><a name="line-113"></a><span class="hs-comment">-- * Chapter 02 / Exercise 01</span><span>
+</span><a name="line-114"></a><span class="hs-comment">--</span><span>
+</span><a name="line-115"></a><span class="hs-comment">-- $c02e1</span><span>
+</span><a name="line-116"></a><span class="hs-comment">-- === From Machines to Compositional Evaluators</span><span>
+</span><a name="line-117"></a><span class="hs-comment">-- https://plum-umd.github.io/abstracting-definitional-interpreters/#%28part._s~3aaam%29</span><span>
+</span><a name="line-118"></a><span class="hs-comment">--</span><span>
+</span><a name="line-119"></a><span class="hs-comment">-- === Exercise</span><span>
+</span><a name="line-120"></a><span class="hs-comment">-- Review the &quot;Tutorial.Chapter02.Exercise01&quot; module</span><span>
+</span><a name="line-121"></a><span>
+</span><a name="line-122"></a><span class="hs-comment">-- * Chapter 02 / Exercise 02</span><span>
+</span><a name="line-123"></a><span class="hs-comment">--</span><span>
+</span><a name="line-124"></a><span class="hs-comment">-- $c02e02</span><span>
+</span><a name="line-125"></a><span class="hs-comment">-- === Abstracting Closures</span><span>
+</span><a name="line-126"></a><span class="hs-comment">-- https://plum-umd.github.io/abstracting-definitional-interpreters/#%28part._s~3aabstracting-closures%29</span><span>
+</span><a name="line-127"></a><span class="hs-comment">--</span><span>
+</span><a name="line-128"></a><span class="hs-comment">-- === Exercise</span><span>
+</span><a name="line-129"></a><span class="hs-comment">-- Review the &quot;Tutorial.Chapter02.Exercise02&quot; module and solve the exercises</span><span>
+</span><a name="line-130"></a><span>
+</span><a name="line-131"></a><span class="hs-keyword">type</span><span> </span><a name="AbstractT"><a href="Grin.CheatSheet.html#AbstractT"><span class="hs-identifier">AbstractT</span></a></a><span> </span><span class="hs-glyph">=</span><span> </span><a href="Grin.Interpreter.Abstract.Base.html#AbstractT"><span class="hs-identifier hs-type">Grin.Interpreter.Abstract.Base.AbstractT</span></a><span>
+</span><a name="line-132"></a><span class="hs-keyword">type</span><span> </span><a name="Cache"><a href="Grin.CheatSheet.html#Cache"><span class="hs-identifier">Cache</span></a></a><span> </span><span class="hs-glyph">=</span><span> </span><a href="Grin.Interpreter.Abstract.Base.html#Cache"><span class="hs-identifier hs-type">Grin.Interpreter.Abstract.Base.Cache</span></a><span>
+</span><a name="line-133"></a><span class="hs-keyword">type</span><span> </span><a name="TypeEnv"><a href="Grin.CheatSheet.html#TypeEnv"><span class="hs-identifier">TypeEnv</span></a></a><span> </span><span class="hs-glyph">=</span><span> </span><a href="Grin.Interpreter.Abstract.Base.html#TypeEnv"><span class="hs-identifier hs-type">Grin.Interpreter.Abstract.Base.TypeEnv</span></a><span>
+</span><a name="line-134"></a><span class="hs-keyword">type</span><span> </span><a name="T"><a href="Grin.CheatSheet.html#T"><span class="hs-identifier">T</span></a></a><span> </span><span class="hs-glyph">=</span><span> </span><a href="Grin.Interpreter.Abstract.Base.html#T"><span class="hs-identifier hs-type">Grin.Interpreter.Abstract.Base.T</span></a><span>
+</span><a name="line-135"></a><span class="hs-keyword">type</span><span> </span><a name="ST"><a href="Grin.CheatSheet.html#ST"><span class="hs-identifier">ST</span></a></a><span> </span><span class="hs-glyph">=</span><span> </span><a href="Grin.Interpreter.Abstract.Base.html#ST"><span class="hs-identifier hs-type">Grin.Interpreter.Abstract.Base.ST</span></a><span>
+</span><a name="line-136"></a><span class="hs-keyword">type</span><span> </span><a name="Loc"><a href="Grin.CheatSheet.html#Loc"><span class="hs-identifier">Loc</span></a></a><span> </span><span class="hs-glyph">=</span><span> </span><a href="Grin.Interpreter.Abstract.Base.html#Loc"><span class="hs-identifier hs-type">Grin.Interpreter.Abstract.Base.Loc</span></a><span>
+</span><a name="line-137"></a><span class="hs-keyword">type</span><span> </span><a name="AbsStore"><a href="Grin.CheatSheet.html#AbsStore"><span class="hs-identifier">AbsStore</span></a></a><span> </span><span class="hs-glyph">=</span><span> </span><a href="Grin.Interpreter.Abstract.Base.html#AbsStore"><span class="hs-identifier hs-type">Grin.Interpreter.Abstract.Base.AbsStore</span></a><span>
+</span><a name="line-138"></a><span class="hs-keyword">type</span><span> </span><a name="AbsEnv"><a href="Grin.CheatSheet.html#AbsEnv"><span class="hs-identifier">AbsEnv</span></a></a><span> </span><span class="hs-glyph">=</span><span> </span><a href="Grin.Interpreter.Abstract.Base.html#AbsEnv"><span class="hs-identifier hs-type">Grin.Interpreter.Abstract.Base.AbsEnv</span></a><span>
+</span><a name="line-139"></a><span class="hs-keyword">type</span><span> </span><a name="AbsState"><a href="Grin.CheatSheet.html#AbsState"><span class="hs-identifier">AbsState</span></a></a><span> </span><span class="hs-glyph">=</span><span> </span><a href="Grin.Interpreter.Abstract.Base.html#AbsState"><span class="hs-identifier hs-type">Grin.Interpreter.Abstract.Base.AbsState</span></a><span>
+</span><a name="line-140"></a><span class="hs-keyword">type</span><span> </span><a name="C02E02_Node"><a href="Grin.CheatSheet.html#C02E02_Node"><span class="hs-identifier">C02E02_Node</span></a></a><span> </span><span class="hs-glyph">=</span><span> </span><a href="Grin.Interpreter.Abstract.Base.html#Node"><span class="hs-identifier hs-type">Grin.Interpreter.Abstract.Base.Node</span></a><span>
+</span><a name="line-141"></a><span>
+</span><a name="line-142"></a><span class="hs-comment">-- * Interlude: Connection between pointer analysis, type systems and abstract interpretations</span><span>
+</span><a name="line-143"></a><span class="hs-comment">--</span><span>
+</span><a name="line-144"></a><span class="hs-comment">-- $interlude2</span><span>
+</span><a name="line-145"></a><span class="hs-comment">-- The original version of this tutorial meant to use a constraint solver for solving the type</span><span>
+</span><a name="line-146"></a><span class="hs-comment">-- equations, but after I decided to give a go with the abstract interpretation.</span><span>
+</span><a name="line-147"></a><span>
+</span><a name="line-148"></a><span class="hs-comment">-- * Chapter 03 / Exercise 01</span><span>
+</span><a name="line-149"></a><span class="hs-comment">--</span><span>
+</span><a name="line-150"></a><span class="hs-comment">-- $c03e01</span><span>
+</span><a name="line-151"></a><span class="hs-comment">--</span><span>
+</span><a name="line-152"></a><span class="hs-comment">-- === Exercise</span><span>
+</span><a name="line-153"></a><span class="hs-comment">-- Fill out the missing pieces in &quot;Tutorial.Chapter03.Exercise01&quot;</span><span>
+</span><a name="line-154"></a><span>
+</span><a name="line-155"></a><span class="hs-comment">-- * Chapter 03 / Exercise 02</span><span>
+</span><a name="line-156"></a><span class="hs-comment">--</span><span>
+</span><a name="line-157"></a><span class="hs-comment">-- $c0302</span><span>
+</span><a name="line-158"></a><span class="hs-comment">--</span><span>
+</span><a name="line-159"></a><span class="hs-comment">-- === Exercise</span><span>
+</span><a name="line-160"></a><span class="hs-comment">-- Solve the exercises in &quot;Tutorial.Chapter03.Exercise02&quot;</span><span>
+</span><a name="line-161"></a><span>
+</span><a name="line-162"></a><span class="hs-comment">-- * Epilogue: Possible futures of the Whole Program Analysis</span><span>
+</span><a name="line-163"></a><span class="hs-comment">--</span><span>
+</span><a name="line-164"></a><span class="hs-comment">-- $epilogue</span><span>
+</span><a name="line-165"></a><span class="hs-comment">-- === Discussion about:</span><span>
+</span><a name="line-166"></a><span class="hs-comment">--     * Incremental Whole Program Analysis</span><span>
+</span><a name="line-167"></a><span class="hs-comment">--     * Module Whole Program Analysis</span><span>
+</span><a name="line-168"></a><span class="hs-comment">--     * Link time optimisations</span><span>
+</span><a name="line-169"></a></pre></body></html>

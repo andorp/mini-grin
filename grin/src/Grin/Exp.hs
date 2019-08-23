@@ -57,6 +57,7 @@ isExternalName es n = n `Prelude.elem` (eName <$> es)
 
 -- * Case Pattern
 
+-- | Case patterns that can be found in the Alt expressions.
 data CPat
   = NodePat Tag [Name]
   | LitPat  SimpleValue
@@ -65,6 +66,7 @@ data CPat
 
 -- * Bind Pattern
 
+-- | Bind patterns that can be found in the EBind epxressions.
 data BPat
   = BNodePat Tag [Name]
   | BVar     Name

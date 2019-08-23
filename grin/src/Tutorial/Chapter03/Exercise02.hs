@@ -13,7 +13,7 @@ import qualified Data.Set as Set
 import qualified Data.Map.Strict as Map hiding (filter)
 
 {-
-Sparse case optimisation is a very powerfull optimisation, which removes the
+Sparse case optimisation is a very powerful optimisation, which removes the
 unnecessary case alternatives.
 
 Exercise:

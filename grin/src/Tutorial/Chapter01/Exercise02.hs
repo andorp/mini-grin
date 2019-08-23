@@ -100,8 +100,8 @@ contents of the heap location associated with the given address may change.
 type InterpretExternal = Map.Map Grin.Name ([Value] -> IO Value)
 
 data Functions = Functions
-  { functions :: Map.Map Grin.Name Exp -- Functions defined within the GRIN program
-  , externals :: InterpretExternal     -- Externals used within the GRIN program
+  { functions :: Map.Map Grin.Name Exp -- ^ Functions defined within the GRIN program
+  , externals :: InterpretExternal     -- ^ Externals used within the GRIN program
   }
 
 
@@ -124,6 +124,7 @@ newtype Definitional m a =
     , MonadFail
     )
 
+-- | Collection of the needed constraints.
 type DC m = (Monad m, MonadIO m, MonadFail m)
 
 {-
