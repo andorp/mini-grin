@@ -3,7 +3,6 @@ module Grin.Interpreter.Base
   ( module Grin.Interpreter.Base
   ) where
 
-import Control.Monad (void)
 import Control.Monad.Fail
 import Control.Monad.Trans (MonadIO)
 import Data.Function (fix)
@@ -73,10 +72,6 @@ baseEval ev0 = \case
     p'  <- flip Env.inserts p <$> bindPattern v (t,vs)
     let p'' = Env.insert n v p'
     localEnv p'' (ev0 rhs)
-
-  EBind lhs BUnit rhs -> do
-    void $ ev0 lhs
-    ev0 rhs
 
   Alt _pat body -> do
     ev0 body

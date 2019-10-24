@@ -230,12 +230,6 @@ eval = \case
     let p' = Env.insert l a p
     localEnv p' $ eval rhs
 
-  -- Evaluates the left expression, than evaluates the right expression, returns the
-  -- value of the right.
-  EBind lhs BUnit rhs -> do
-    void $ eval lhs
-    eval rhs
-
   -- Evaluates the left expression, than binds its return value to the variable
   -- extending the environment, run the right epxression with the extended
   -- environemnt and returns its value.

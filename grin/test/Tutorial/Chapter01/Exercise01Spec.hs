@@ -65,7 +65,7 @@ fact =
     , Def "main" [] $
         EBind (SPure (Val (VPrim (SInt64 10)))) (BVar "m1") $
         EBind (SApp "fact" ["m1"]) (BVar "m2") $
-        EBind (SApp "prim_int_print" ["m2"]) BUnit $
+        EBind (SApp "prim_int_print" ["m2"]) (BVar "pip1") $
         SPure (Var "m2")
     ]
 
@@ -134,11 +134,11 @@ sumSimple =
                 SPure (Var "e13")
           , Alt (NodePat (Tag F "upto") ["e6", "e7"]) $
                 EBind (SApp "upto" ["e6", "e7"]) (BVar "e8") $
-                EBind (SUpdate "e1" "e8") BUnit $
+                EBind (SUpdate "e1" "e8") (BVar "up1") $
                 SPure (Var "e8")
           , Alt (NodePat (Tag F "sum") ["e9"]) $
                 EBind (SApp "sum" ["e9"]) (BVar "e10") $
-                EBind (SUpdate "e1" "e10") BUnit $
+                EBind (SUpdate "e1" "e10") (BVar "up2") $
                 SPure (Var "e10")
           ]
     ]

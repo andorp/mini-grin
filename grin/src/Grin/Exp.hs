@@ -70,7 +70,6 @@ data CPat
 data BPat
   = BNodePat Name Tag [Name]  -- ^ var@(Ctag var1 .. varn)
   | BVar     Name             -- ^ var
-  | BUnit                     -- ^ ()
   deriving (Eq, Show, Ord)
 
 externals :: Exp -> [External]
@@ -109,7 +108,6 @@ instance Pretty BPat where
   pretty = \case
     BNodePat name tag args -> pretty name <> text "@" <> (parens $ hsep (pretty tag : fmap pretty args))
     BVar name              -> pretty name
-    BUnit                  -> parens Grin.Pretty.empty
 
 prettyExternals :: [External] -> Doc
 prettyExternals exts = vcat (map prettyExt exts) where
@@ -138,7 +136,6 @@ prettyHighlightExternals exts = cata folder where
     ProgramF es defs  -> vcat (prettyExternals es : defs)
     DefF name args exp  -> hsep (pretty name : fmap pretty args) <+> text "=" <$$> indent 2 exp <> line
     -- Exp
-    EBindF simpleexp BUnit exp -> simpleexp <$$> exp
     EBindF simpleexp lpat  exp -> pretty lpat <+> text "<-" <+> simpleexp <$$> exp
     ECaseF val alts   -> keyword "case" <+> pretty val <+> keyword "of" <$$> indent 2 (vsep alts)
     -- Simple Expr

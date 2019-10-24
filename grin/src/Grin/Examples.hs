@@ -17,7 +17,7 @@ import Grin.TypeEnv
 
 import Grin.Exp
   ( External(External)
-  , BPat(BUnit,BVar,BNodePat)
+  , BPat(BVar,BNodePat)
   , CPat(NodePat, LitPat)
   )
 
@@ -109,7 +109,7 @@ fact =
     , Def "main" [] $
         Bind (Pure (Val (VPrim (SInt64 10)))) (BVar "m1") $
         Bind (App "fact" ["m1"]) (BVar "m2") $
-        Bind (App "prim_int_print" ["m2"]) BUnit $
+        Bind (App "prim_int_print" ["m2"]) (BVar "pip1") $
         Pure (Var "m2")
     ]
 
@@ -252,11 +252,11 @@ sumSimple =
                 Pure (Var "e13")
           , Alt (NodePat (Tag F "upto") ["e6", "e7"]) $
                 Bind (App "upto" ["e6", "e7"]) (BVar "e8") $
-                Bind (Update "e1" "e8") BUnit $
+                Bind (Update "e1" "e8") (BVar "up1") $
                 Pure (Var "e8")
           , Alt (NodePat (Tag F "sum") ["e9"]) $
                 Bind (App "sum" ["e9"]) (BVar "e10") $
-                Bind (Update "e1" "e10") BUnit $
+                Bind (Update "e1" "e10") (BVar "up2") $
                 Pure (Var "e10")
           ]
     ]

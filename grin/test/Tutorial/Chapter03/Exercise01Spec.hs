@@ -56,7 +56,7 @@ evalExp =
                 Pure (Var "e4")
           , Alt (NodePat (Tag F "add") ["e5", "e6"]) $
                 Bind (App "add" ["e5", "e6"]) (BVar "e7") $
-                Bind (Update "e1" "e7") BUnit $
+                Bind (Update "e1" "e7") (BVar "up1") $
                 Pure (Var "e7")
           ]
     ]

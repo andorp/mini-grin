@@ -30,8 +30,6 @@ import qualified Data.Map as Map
 renameVars :: Name -> Name -> Int -> Exp -> Exp
 renameVars ep arg i = cata $ \case
   -- Exercise: Undestand, how the BaseFunctor like EBindF plays a role in this expression.
-  EBindF (lhs :: Exp) BUnit (rhs :: Exp) -> EBind lhs BUnit rhs
-
   -- Exercise: Read all the constructors above
   EBindF lhs (BVar n)           rhs -> EBind lhs (BVar (new n)) rhs
   EBindF lhs (BNodePat n t as)  rhs -> EBind lhs (BNodePat (new n) t (map new as)) rhs

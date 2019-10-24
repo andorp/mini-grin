@@ -106,10 +106,6 @@ eval ev = \case
     let p'' = Env.insert n v p'
     localEnv p'' (ev rhs)
 
-  EBind lhs BUnit rhs -> do
-    void $ ev lhs
-    ev rhs
-
   Alt _pat body -> do
     ev body
 
