@@ -67,11 +67,12 @@ baseEval ev0 = \case
     let p' = Env.insert n v p
     localEnv p' (ev0 rhs)
 
-  EBind lhs (BNodePat t@(Tag{}) vs) rhs -> do
+  EBind lhs (BNodePat n t@(Tag{}) vs) rhs -> do
     v   <- ev0 lhs
     p   <- askEnv
     p'  <- flip Env.inserts p <$> bindPattern v (t,vs)
-    localEnv p' (ev0 rhs)
+    let p'' = Env.insert n v p'
+    localEnv p'' (ev0 rhs)
 
   EBind lhs BUnit rhs -> do
     void $ ev0 lhs

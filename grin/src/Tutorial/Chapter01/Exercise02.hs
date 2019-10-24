@@ -249,11 +249,12 @@ eval = \case
   -- in the bind pattern if the tag of the computed value matches,
   -- extending the environment, run the right epxression with the extended
   -- environemnt and returns its value.
-  EBind lhs (BNodePat t@(Grin.Tag{}) vs) rhs -> do
+  EBind lhs (BNodePat n t@(Grin.Tag{}) vs) rhs -> do
     v   <- eval lhs
     p   <- askEnv
     p'  <- flip Env.inserts p <$> bindPattern v (t,vs)
-    localEnv p' (eval rhs)
+    let p'' = Env.insert n v p'
+    localEnv p'' (eval rhs)
 
   -- After the Case selected the Alternative it just needs to evaluate its body.
   Alt _pat body -> do

@@ -68,9 +68,9 @@ data CPat
 
 -- | Bind patterns that can be found in the EBind epxressions.
 data BPat
-  = BNodePat Tag [Name]
-  | BVar     Name
-  | BUnit
+  = BNodePat Name Tag [Name]  -- ^ var@(Ctag var1 .. varn)
+  | BVar     Name             -- ^ var
+  | BUnit                     -- ^ ()
   deriving (Eq, Show, Ord)
 
 externals :: Exp -> [External]
@@ -107,9 +107,9 @@ instance Pretty CPat where
 
 instance Pretty BPat where
   pretty = \case
-    BNodePat tag args -> parens $ hsep (pretty tag : fmap pretty args)
-    BVar name         -> pretty name
-    BUnit             -> parens Grin.Pretty.empty
+    BNodePat name tag args -> pretty name <> text "@" <> (parens $ hsep (pretty tag : fmap pretty args))
+    BVar name              -> pretty name
+    BUnit                  -> parens Grin.Pretty.empty
 
 prettyExternals :: [External] -> Doc
 prettyExternals exts = vcat (map prettyExt exts) where

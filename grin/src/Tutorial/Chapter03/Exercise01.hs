@@ -33,8 +33,8 @@ renameVars ep arg i = cata $ \case
   EBindF (lhs :: Exp) BUnit (rhs :: Exp) -> EBind lhs BUnit rhs
 
   -- Exercise: Read all the constructors above
-  EBindF lhs (BVar n)         rhs -> EBind lhs (BVar (new n)) rhs
-  EBindF lhs (BNodePat t as)  rhs -> EBind lhs (BNodePat t (map new as)) rhs
+  EBindF lhs (BVar n)           rhs -> EBind lhs (BVar (new n)) rhs
+  EBindF lhs (BNodePat n t as)  rhs -> EBind lhs (BNodePat (new n) t (map new as)) rhs
 
   SPureF (Var n)                    -> SPure (Var (new n))
   SPureF (Val (VPrim vp))           -> SPure (Val (VPrim vp))

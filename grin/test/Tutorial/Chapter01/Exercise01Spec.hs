@@ -89,11 +89,11 @@ sumSimple =
         EBind (SStore "m7") (BVar "m8") $
         EBind (SPure (Val (VNode (Node (Tag F "sum") ["m8"])))) (BVar "m9") $
         EBind (SStore "m9") (BVar "m10") $
-        EBind (SApp "eval" ["m10"]) (BNodePat (Tag C "Int") ["m11"]) $
+        EBind (SApp "eval" ["m10"]) (BNodePat "p1" (Tag C "Int") ["m11"]) $
         SApp "prim_int_print" ["m11"]
     , Def "upto" ["u1", "u2"] $
-        EBind (SApp "eval" ["u1"]) (BNodePat (Tag C "Int") ["u3"]) $
-        EBind (SApp "eval" ["u2"]) (BNodePat (Tag C "Int") ["u4"]) $
+        EBind (SApp "eval" ["u1"]) (BNodePat "p2" (Tag C "Int") ["u3"]) $
+        EBind (SApp "eval" ["u2"]) (BNodePat "p3" (Tag C "Int") ["u4"]) $
         EBind (SApp "prim_int_gt" ["u3", "u4"]) (BVar "u5") $
         ECase "u5"
           [ Alt (LitPat (SBool True)) $
@@ -115,8 +115,8 @@ sumSimple =
                 EBind (SPure (Val (VPrim(SInt64 0)))) (BVar "s3") $
                 SPure (Val (VNode (Node (Tag C "Int") ["s3"])))
           , Alt (NodePat (Tag C "Cons") ["s5", "s6"]) $
-                EBind (SApp "eval" ["s5"]) (BNodePat (Tag C "Int") ["s7"]) $
-                EBind (SApp "sum" ["s6"]) (BNodePat (Tag C "Int") ["s8"]) $
+                EBind (SApp "eval" ["s5"]) (BNodePat "p4" (Tag C "Int") ["s7"]) $
+                EBind (SApp "sum" ["s6"]) (BNodePat "p5" (Tag C "Int") ["s8"]) $
                 EBind (SApp "prim_int_add" ["s7", "s8"]) (BVar "s9") $
                 SPure (Val (VNode (Node (Tag C "Int") ["s9"])))
           ]

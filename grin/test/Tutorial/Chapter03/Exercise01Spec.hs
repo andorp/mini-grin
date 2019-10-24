@@ -42,8 +42,8 @@ evalExp =
         Pure (Var "m9")
 
     , Def "add" ["a1", "a2"] $
-        Bind (App "eval" ["a1"]) (BNodePat (Tag C "Int") ["a3"]) $
-        Bind (App "eval" ["a2"]) (BNodePat (Tag C "Int") ["a4"]) $
+        Bind (App "eval" ["a1"]) (BNodePat "p1" (Tag C "Int") ["a3"]) $
+        Bind (App "eval" ["a2"]) (BNodePat "p2" (Tag C "Int") ["a4"]) $
         Bind (App "prim_int_add" ["a3", "a4"]) (BVar "a5") $
         Bind (Pure (Val (VNode (Node (Tag C "Int") ["a5"])))) (BVar "a6") $
         Pure (Var "a6")

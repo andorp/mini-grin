@@ -133,12 +133,12 @@ main =
   m8 <- store m7
   m9 <- pure (Fsum m8)
   m10 <- store m9
-  (CInt m11) <- eval $ m10
+  p1@(CInt m11) <- eval $ m10
   prim_int_print $ m11
 
 upto u1 u2 =
-  (CInt u3) <- eval $ u1
-  (CInt u4) <- eval $ u2
+  p2@(CInt u3) <- eval $ u1
+  p3@(CInt u4) <- eval $ u2
   u5 <- prim_int_gt $ u3 u4
   case u5 of
     #True ->
@@ -160,8 +160,8 @@ sum s1 =
       s3 <- pure 0
       pure (CInt s3)
     (CCons s5 s6) ->
-      (CInt s7) <- eval $ s5
-      (CInt s8) <- sum $ s6
+      p4@(CInt s7) <- eval $ s5
+      p5@(CInt s8) <- sum $ s6
       s9 <- prim_int_add $ s7 s8
       pure (CInt s9)
 
@@ -207,11 +207,11 @@ sumSimple =
         Bind (Store "m7") (BVar "m8") $
         Bind (Pure (Val (VNode (Node (Tag F "sum") ["m8"])))) (BVar "m9") $
         Bind (Store "m9") (BVar "m10") $
-        Bind (App "eval" ["m10"]) (BNodePat (Tag C "Int") ["m11"]) $
+        Bind (App "eval" ["m10"]) (BNodePat "p1" (Tag C "Int") ["m11"]) $
         App "prim_int_print" ["m11"]
     , Def "upto" ["u1", "u2"] $
-        Bind (App "eval" ["u1"]) (BNodePat (Tag C "Int") ["u3"]) $
-        Bind (App "eval" ["u2"]) (BNodePat (Tag C "Int") ["u4"]) $
+        Bind (App "eval" ["u1"]) (BNodePat "p2" (Tag C "Int") ["u3"]) $
+        Bind (App "eval" ["u2"]) (BNodePat "p3" (Tag C "Int") ["u4"]) $
         Bind (App "prim_int_gt" ["u3", "u4"]) (BVar "u5") $
         Case "u5"
           [ Alt (LitPat (SBool True)) $
@@ -233,8 +233,8 @@ sumSimple =
                 Bind (Pure (Val (VPrim (SInt64 0)))) (BVar "s3") $
                 Pure (Val (VNode (Node (Tag C "Int") ["s3"])))
           , Alt (NodePat (Tag C "Cons") ["s5", "s6"]) $
-                Bind (App "eval" ["s5"]) (BNodePat (Tag C "Int") ["s7"]) $
-                Bind (App "sum" ["s6"]) (BNodePat (Tag C "Int") ["s8"]) $
+                Bind (App "eval" ["s5"]) (BNodePat "p4" (Tag C "Int") ["s7"]) $
+                Bind (App "sum" ["s6"]) (BNodePat "p5" (Tag C "Int") ["s8"]) $
                 Bind (App "prim_int_add" ["s7", "s8"]) (BVar "s9") $
                 Pure (Val (VNode (Node (Tag C "Int") ["s9"])))
           ]
