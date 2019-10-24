@@ -150,19 +150,20 @@ instance (Monad m, MonadIO m, MonadFail m) => Interpreter (AbstractT m) where
     selectedAlts <- filterM isMatching alts
     forMonadPlus selectedAlts extendAlt
     where
-      isMatching (Alt DefaultPat      _) = pure True
-      isMatching (Alt (LitPat l)      _) = (v ==) <$> value (Grin.VPrim l)
-      isMatching (Alt (NodePat t _ps) _) = case v of
+      isMatching (Alt _ DefaultPat      _) = pure True
+      isMatching (Alt _ (LitPat l)      _) = (v ==) <$> value (Grin.VPrim l)
+      isMatching (Alt _ (NodePat t _ps) _) = case v of
         NT (Node t0 _) -> pure $ t == t0
         _nonNodeType   -> pure False
       isMatching overGenerative = error $ show overGenerative
 
-      extendAlt alt@(Alt DefaultPat     _body) = ev0 alt
-      extendAlt alt@(Alt (LitPat _)     _body) = ev0 alt
-      extendAlt alt@(Alt (NodePat _ ns) _body) = case v of
+      extendAlt alt@(Alt n DefaultPat     _body) = askEnv >>= flip localEnv (ev0 alt) . Env.insert n v
+      extendAlt alt@(Alt n (LitPat _)     _body) = askEnv >>= flip localEnv (ev0 alt) . Env.insert n v
+      extendAlt alt@(Alt n (NodePat _ ns) _body) = case v of
         NT (Node _t0 vs) -> do
-          p <- askEnv
-          localEnv (Env.inserts (ns `zip` (ST <$> vs)) p) $ ev0 alt
+          p0 <- askEnv
+          let p1 = Env.insert n v p0
+          localEnv (Env.inserts (ns `zip` (ST <$> vs)) p1) $ ev0 alt
         nonNodeType -> error $ show nonNodeType
       extendAlt overGenerative = error $ show overGenerative
 

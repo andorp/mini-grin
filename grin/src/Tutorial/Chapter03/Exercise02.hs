@@ -30,7 +30,7 @@ sparseCaseOptimisation te = ana $ \case
   ECase n alts ->
     let ty = (te ^. variable) Map.! n
     in ECaseF n $
-        filter (\(Alt cpat _) -> matchingAlt ty cpat) $ removeTheRedundantDefault ty alts
+        filter (\(Alt _ cpat _) -> matchingAlt ty cpat) $ removeTheRedundantDefault ty alts
   -- Exercise: Use the function from the Data.Functor.Foldable library
   other -> undefined other
 

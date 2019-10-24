@@ -53,10 +53,10 @@ fact =
         EBind (SPure (Val (VPrim (SInt64 0)))) (BVar "f2") $
         EBind (SApp "prim_int_eq" ["f1", "f2"]) (BVar "f3") $
         ECase "f3"
-          [ Alt (LitPat (SBool True)) $
+          [ Alt "alt1" (LitPat (SBool True)) $
                 EBind (SPure (Val (VPrim (SInt64 1)))) (BVar "f7") $
                 SPure (Var "f7")
-          , Alt (LitPat (SBool False)) $
+          , Alt "alt2" (LitPat (SBool False)) $
                 EBind (SPure (Val (VPrim(SInt64 1)))) (BVar "f4") $
                 EBind (SApp "prim_int_sub" ["f1", "f4"]) (BVar "f5") $
                 EBind (SApp "fact" ["f5"]) (BVar "f6") $
@@ -96,10 +96,10 @@ sumSimple =
         EBind (SApp "eval" ["u2"]) (BNodePat "p3" (Tag C "Int") ["u4"]) $
         EBind (SApp "prim_int_gt" ["u3", "u4"]) (BVar "u5") $
         ECase "u5"
-          [ Alt (LitPat (SBool True)) $
+          [ Alt "alt1" (LitPat (SBool True)) $
                 EBind (SPure (Val (VNode (Node (Tag C "Nil") [])))) (BVar "u12") $
                 SPure (Var "u12")
-          , Alt (LitPat (SBool False)) $
+          , Alt "alt2" (LitPat (SBool False)) $
                 EBind (SPure (Val (VPrim(SInt64 1)))) (BVar "u6") $
                 EBind (SApp "prim_int_add" ["u3", "u6"]) (BVar "u7") $
                 EBind (SPure (Val (VNode (Node (Tag C "Int") ["u7"])))) (BVar "u8") $
@@ -111,10 +111,10 @@ sumSimple =
     , Def "sum" ["s1"] $
         EBind (SApp "eval" ["s1"]) (BVar "s2") $
         ECase "s2"
-          [ Alt (NodePat (Tag C "Nil") []) $
+          [ Alt "alt3" (NodePat (Tag C "Nil") []) $
                 EBind (SPure (Val (VPrim(SInt64 0)))) (BVar "s3") $
                 SPure (Val (VNode (Node (Tag C "Int") ["s3"])))
-          , Alt (NodePat (Tag C "Cons") ["s5", "s6"]) $
+          , Alt "alt4" (NodePat (Tag C "Cons") ["s5", "s6"]) $
                 EBind (SApp "eval" ["s5"]) (BNodePat "p4" (Tag C "Int") ["s7"]) $
                 EBind (SApp "sum" ["s6"]) (BNodePat "p5" (Tag C "Int") ["s8"]) $
                 EBind (SApp "prim_int_add" ["s7", "s8"]) (BVar "s9") $
@@ -123,20 +123,20 @@ sumSimple =
     , Def "eval" ["e1"] $
         EBind (SFetch "e1") (BVar "e2") $
         ECase "e2"
-          [ Alt (NodePat (Tag C "Int") ["e3"]) $
+          [ Alt "alt5" (NodePat (Tag C "Int") ["e3"]) $
                 EBind (SPure (Val (VNode (Node (Tag C "Int") ["e3"])))) (BVar "e11") $
                 SPure (Var "e11")
-          , Alt (NodePat (Tag C "Nil") []) $
+          , Alt "alt6" (NodePat (Tag C "Nil") []) $
                 EBind (SPure (Val (VNode (Node (Tag C "Nil") [])))) (BVar "e12") $
                 SPure (Var "e12")
-          , Alt (NodePat (Tag C "Cons") ["e4", "e5"]) $
+          , Alt "alt7" (NodePat (Tag C "Cons") ["e4", "e5"]) $
                 EBind (SPure (Val (VNode (Node (Tag C "Cons") ["e4", "e5"])))) (BVar "e13") $
                 SPure (Var "e13")
-          , Alt (NodePat (Tag F "upto") ["e6", "e7"]) $
+          , Alt "alt8" (NodePat (Tag F "upto") ["e6", "e7"]) $
                 EBind (SApp "upto" ["e6", "e7"]) (BVar "e8") $
                 EBind (SUpdate "e1" "e8") (BVar "up1") $
                 SPure (Var "e8")
-          , Alt (NodePat (Tag F "sum") ["e9"]) $
+          , Alt "alt9" (NodePat (Tag F "sum") ["e9"]) $
                 EBind (SApp "sum" ["e9"]) (BVar "e10") $
                 EBind (SUpdate "e1" "e10") (BVar "up2") $
                 SPure (Var "e10")

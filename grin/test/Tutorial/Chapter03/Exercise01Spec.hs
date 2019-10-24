@@ -51,10 +51,10 @@ evalExp =
     , Def "eval" ["e1"] $
         Bind (Fetch "e1") (BVar "e2") $
         Case "e2"
-          [ Alt (NodePat (Tag C "Int") ["e3"]) $
+          [ Alt "alt1" (NodePat (Tag C "Int") ["e3"]) $
                 Bind (Pure (Val (VNode (Node (Tag C "Int") ["e3"])))) (BVar "e4") $
                 Pure (Var "e4")
-          , Alt (NodePat (Tag F "add") ["e5", "e6"]) $
+          , Alt "alt2" (NodePat (Tag F "add") ["e5", "e6"]) $
                 Bind (App "add" ["e5", "e6"]) (BVar "e7") $
                 Bind (Update "e1" "e7") (BVar "up1") $
                 Pure (Var "e7")

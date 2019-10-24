@@ -57,7 +57,8 @@ data Exp (ctx :: ExpCtx) where
     -> Exp 'Simple
 
   Alt
-    :: CPat
+    :: Name
+    -> CPat
     -> Exp 'Bind_  -- ^ continuation
     -> Exp 'Alt_
 

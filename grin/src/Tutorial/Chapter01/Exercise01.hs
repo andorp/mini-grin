@@ -67,7 +67,7 @@ convertGExpToExp = \case
   App      n ps      -> undefined
 
   -- Exercise: Turn the body of the alt to an E.Exp
-  Alt      c body    -> E.Alt c undefined
+  Alt      n c b     -> E.Alt n c undefined
 
   -- Exercise: Turn the Case constructor to its E.Exp counterpart.
   Case     n alts    -> undefined

@@ -69,10 +69,10 @@ fact f1 =
   f2 <- pure 0
   f3 <- prim_int_eq $ f1 f2
   case f3 of
-    #True ->
+    alt1@#True ->
       f7 <- pure 1
       pure f7
-    #False ->
+    alt2@#False ->
       f4 <- pure 1
       f5 <- prim_int_sub $ f1 f4
       f6 <- fact $ f5
@@ -97,10 +97,10 @@ fact =
         Bind (Pure (Val (VPrim (SInt64 0)))) (BVar "f2") $
         Bind (App "prim_int_eq" ["f1", "f2"]) (BVar "f3") $
         Case "f3"
-          [ Alt (LitPat (SBool True)) $
+          [ Alt "alt1" (LitPat (SBool True)) $
                 Bind (Pure (Val (VPrim (SInt64 1)))) (BVar "f7") $
                 Pure (Var "f7")
-          , Alt (LitPat (SBool False)) $
+          , Alt "alt2" (LitPat (SBool False)) $
                 Bind (Pure (Val (VPrim (SInt64 1)))) (BVar "f4") $
                 Bind (App "prim_int_sub" ["f1", "f4"]) (BVar "f5") $
                 Bind (App "fact" ["f5"]) (BVar "f6") $
@@ -141,10 +141,10 @@ upto u1 u2 =
   p3@(CInt u4) <- eval $ u2
   u5 <- prim_int_gt $ u3 u4
   case u5 of
-    #True ->
+    alt1@#True ->
       u12 <- pure (CNil)
       pure u12
-    #False ->
+    alt2@#False ->
       u6 <- pure 1
       u7 <- prim_int_add $ u3 u6
       u8 <- pure (CInt u7)
@@ -156,10 +156,10 @@ upto u1 u2 =
 sum s1 =
   s2 <- eval $ s1
   case s2 of
-    (CNil) ->
+    alt3@(CNil) ->
       s3 <- pure 0
       pure (CInt s3)
-    (CCons s5 s6) ->
+    alt4@(CCons s5 s6) ->
       p4@(CInt s7) <- eval $ s5
       p5@(CInt s8) <- sum $ s6
       s9 <- prim_int_add $ s7 s8
@@ -168,20 +168,20 @@ sum s1 =
 eval e1 =
   e2 <- fetch e1
   case e2 of
-    (CInt e3) ->
+    alt5@(CInt e3) ->
       e11 <- pure (CInt e3)
       pure e11
-    (CNil) ->
+    alt6@(CNil) ->
       e12 <- pure (CNil)
       pure e12
-    (CCons e4 e5) ->
+    alt7@(CCons e4 e5) ->
       e13 <- pure (CCons e4 e5)
       pure e13
-    (Fupto e6 e7) ->
+    alt8@(Fupto e6 e7) ->
       e8 <- upto $ e6 e7
       update e1 e8
       pure e8
-    (Fsum e9) ->
+    alt9@(Fsum e9) ->
       e10 <- sum $ e9
       update e1 e10
       pure e10
@@ -214,10 +214,10 @@ sumSimple =
         Bind (App "eval" ["u2"]) (BNodePat "p3" (Tag C "Int") ["u4"]) $
         Bind (App "prim_int_gt" ["u3", "u4"]) (BVar "u5") $
         Case "u5"
-          [ Alt (LitPat (SBool True)) $
+          [ Alt "alt1" (LitPat (SBool True)) $
                 Bind (Pure (Val (VNode (Node (Tag C "Nil") [])))) (BVar "u12") $
                 Pure (Var "u12")
-          , Alt (LitPat (SBool False)) $
+          , Alt "alt2" (LitPat (SBool False)) $
                 Bind (Pure (Val (VPrim (SInt64 1)))) (BVar "u6") $
                 Bind (App "prim_int_add" ["u3", "u6"]) (BVar "u7") $
                 Bind (Pure (Val (VNode (Node (Tag C "Int") ["u7"])))) (BVar "u8") $
@@ -229,10 +229,10 @@ sumSimple =
     , Def "sum" ["s1"] $
         Bind (App "eval" ["s1"]) (BVar "s2") $
         Case "s2"
-          [ Alt (NodePat (Tag C "Nil") []) $
+          [ Alt "alt3" (NodePat (Tag C "Nil") []) $
                 Bind (Pure (Val (VPrim (SInt64 0)))) (BVar "s3") $
                 Pure (Val (VNode (Node (Tag C "Int") ["s3"])))
-          , Alt (NodePat (Tag C "Cons") ["s5", "s6"]) $
+          , Alt "alt4" (NodePat (Tag C "Cons") ["s5", "s6"]) $
                 Bind (App "eval" ["s5"]) (BNodePat "p4" (Tag C "Int") ["s7"]) $
                 Bind (App "sum" ["s6"]) (BNodePat "p5" (Tag C "Int") ["s8"]) $
                 Bind (App "prim_int_add" ["s7", "s8"]) (BVar "s9") $
@@ -241,20 +241,20 @@ sumSimple =
     , Def "eval" ["e1"] $
         Bind (Fetch "e1") (BVar "e2") $
         Case "e2"
-          [ Alt (NodePat (Tag C "Int") ["e3"]) $
+          [ Alt "alt5" (NodePat (Tag C "Int") ["e3"]) $
                 Bind (Pure (Val (VNode (Node (Tag C "Int") ["e3"])))) (BVar "e11") $
                 Pure (Var "e11")
-          , Alt (NodePat (Tag C "Nil") []) $
+          , Alt "alt6" (NodePat (Tag C "Nil") []) $
                 Bind (Pure (Val (VNode (Node (Tag C "Nil") [])))) (BVar "e12") $
                 Pure (Var "e12")
-          , Alt (NodePat (Tag C "Cons") ["e4", "e5"]) $
+          , Alt "alt7" (NodePat (Tag C "Cons") ["e4", "e5"]) $
                 Bind (Pure (Val (VNode (Node (Tag C "Cons") ["e4", "e5"])))) (BVar "e13") $
                 Pure (Var "e13")
-          , Alt (NodePat (Tag F "upto") ["e6", "e7"]) $
+          , Alt "alt8" (NodePat (Tag F "upto") ["e6", "e7"]) $
                 Bind (App "upto" ["e6", "e7"]) (BVar "e8") $
                 Bind (Update "e1" "e8") (BVar "up1") $
                 Pure (Var "e8")
-          , Alt (NodePat (Tag F "sum") ["e9"]) $
+          , Alt "alt9" (NodePat (Tag F "sum") ["e9"]) $
                 Bind (App "sum" ["e9"]) (BVar "e10") $
                 Bind (Update "e1" "e10") (BVar "up2") $
                 Pure (Var "e10")

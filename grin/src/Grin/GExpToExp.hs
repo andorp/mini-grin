@@ -14,6 +14,6 @@ gexpToExp = \case
   Store    n         -> Grin.SStore n
   Fetch    n         -> Grin.SFetch n
   Update   n v       -> Grin.SUpdate n v
-  Alt      c body    -> Grin.Alt c $ gexpToExp body
+  Alt      n c b     -> Grin.Alt n c $ gexpToExp b
   Case     n alts    -> Grin.ECase n (gexpToExp <$> alts)
   Bind     lhs v rhs -> Grin.EBind (gexpToExp lhs) v (gexpToExp rhs)

@@ -73,7 +73,7 @@ baseEval ev0 = \case
     let p'' = Env.insert n v p'
     localEnv p'' (ev0 rhs)
 
-  Alt _pat body -> do
+  Alt _name _pat body -> do
     ev0 body
 
   overGenerative -> error $ show overGenerative

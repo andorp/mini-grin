@@ -251,7 +251,7 @@ eval = \case
     localEnv p'' (eval rhs)
 
   -- After the Case selected the Alternative it just needs to evaluate its body.
-  Alt _pat body -> do
+  Alt _n _pat body -> do
     eval body
 
   overGenerative -> error $ show overGenerative
@@ -351,6 +351,7 @@ evalCase ev =
   -- If the Alt has a Node pattern, the Val must be a Node
   -- In that case bind the values to the names defined in the Alt pattern
   -- create a new local environment and evaluate the body of the alt in it.
+  -- Note that the name in the Alt must bind the value in the environment.
   undefined
 
 -- | Creates a location for a given name. This is particular for the GRIN store structure,

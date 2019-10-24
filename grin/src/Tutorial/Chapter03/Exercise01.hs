@@ -24,7 +24,7 @@ import qualified Data.Map as Map
 -- Turning every constuctor to a Functor, based on the recursive instance of the type in the constructor.
 -- E.g: ((Def Name [Name] Exp) :: Exp) will be turned into ((DefF Name [Name] r) :: ExpF r)
 
--- Rename Vars uses a the cata from the Recursive type class, where the information we build up from
+-- Rename Vars uses the cata from the Recursive type class, where the information we build up from
 -- the buttom to top is the Exp AST itself, instead of another type. This way we can write program
 -- transformations easily, without applying the recursion boilerplate, that could be errorprone.
 renameVars :: Name -> Name -> Int -> Exp -> Exp
@@ -45,9 +45,9 @@ renameVars ep arg i = cata $ \case
   -- Hint: Alts are already computed in the previous steps of the recursion
   -- Same applies to the rest of the instances where we have a 'body'
   ECaseF n (alts :: [Exp])  -> ECase (new n) alts
-  AltF DefaultPat body      -> Alt DefaultPat body
-  AltF (LitPat l) body      -> Alt (LitPat l) body
-  AltF (NodePat t as) body  -> Alt (NodePat t (map new as)) body
+  AltF n DefaultPat body      -> Alt (new n) DefaultPat body
+  AltF n (LitPat l) body      -> Alt (new n) (LitPat l) body
+  AltF n (NodePat t as) body  -> Alt (new n) (NodePat t (map new as)) body
   BlockF body               -> Block body
   other -> error $ show other -- This function shouldn't be applied defs and above
   where
@@ -60,7 +60,7 @@ renameVars ep arg i = cata $ \case
 -- Exercise: Open the Data.Functor.FoldableM module and read the description of the apoM function.
 -- FoldableM is part of this repository.
 --
--- InlineEval uses an integer to index to generate new names during the inline-ing.
+-- InlineEval uses an integer index to generate new names during the inline-ing.
 inlineEval :: Exp -> Exp
 inlineEval prog
   = bindNormalisation         -- This is a helper which removes the inserted blocks.

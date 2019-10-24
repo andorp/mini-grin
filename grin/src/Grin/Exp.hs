@@ -35,7 +35,8 @@ data Exp
   | SFetch      Name -- Variable should hold only locations
   | SUpdate     Name Name -- The variables in order should hold only location and node
   -- Alt
-  | Alt CPat Exp
+  | Alt Name CPat Exp -- The name for the alt serves as a unique program name for the
+                      -- program point which is represented by the Alt itself
   | Block Exp -- Block plays a role in transformations. When a transformation needs to
               -- replace a simple Expression with a complex Bind one, the Block constructor
               -- comes into the picture.
@@ -145,7 +146,7 @@ prettyHighlightExternals exts = cata folder where
     SFetchF  name           -> keywordR "fetch" <+> pretty name
     SUpdateF name val       -> keywordR "update" <+> pretty name <+> pretty val
     -- Alt
-    AltF cpat exp     -> pretty cpat <+> text "->" <$$> indent 2 exp
+    AltF name cpat exp      -> pretty name <> text "@" <> pretty cpat <+> text "->" <$$> indent 2 exp
     -- Block
     BlockF exp              -> text "do" <$$> indent 2 exp
 

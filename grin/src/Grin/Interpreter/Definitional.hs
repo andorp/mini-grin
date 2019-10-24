@@ -138,7 +138,7 @@ instance (Applicative m, Monad m, MonadFail m) => Interpreter (DefinitionalT m) 
     lift (lift (op params))
 
   evalCase :: (Exp -> (DefinitionalT m) DVal) -> DVal -> [Alt] -> (DefinitionalT m) DVal
-  evalCase ev0 v alts = evalBranch v $ head $ filter (\(Alt p _b) -> match v p) alts
+  evalCase ev0 v alts = evalBranch v $ head $ filter (\(Alt n p _b) -> match v p) alts
     where
       match :: DVal -> CPat -> Bool
       match DUnit                 p               = error $ "matching failure:" ++ show (DUnit, p)
@@ -150,12 +150,15 @@ instance (Applicative m, Monad m, MonadFail m) => Interpreter (DefinitionalT m) 
       match _                     _               = False
 
       evalBranch :: DVal -> Alt -> (DefinitionalT m) DVal
-      evalBranch (DNode (Node t0 vs)) (Alt (NodePat t1 nps) body)
+      evalBranch (DNode (Node t0 vs)) (Alt n (NodePat t1 nps) body)
         | t0 == t1 = do
-            p <- askEnv
-            let p' = Env.inserts (nps `zip` (DVal <$> vs)) p
-            localEnv p' (ev0 body)
-      evalBranch _                    (Alt _               body) = ev0 body
+            p0 <- askEnv
+            let p1 = Env.insert n v p0
+            let p2 = Env.inserts (nps `zip` (DVal <$> vs)) p1
+            localEnv p2 (ev0 body)
+      evalBranch _   (Alt n _ body) = do
+        p <- askEnv
+        localEnv (Env.insert n v p) $ ev0 body
       evalBranch pat alt = error $ "evalBranch: " ++ show (pat, alt)
 
   funCall :: (Exp -> DefinitionalT m DVal) -> Name -> [DVal] -> DefinitionalT m DVal
