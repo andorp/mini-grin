@@ -1,0 +1,168 @@
+
+.type Function
+.type Variable
+.type Tag
+.type Literal
+.type SimpleType
+.type CodeName = Variable | Function
+
+// External function (name, effectful)
+.decl External(f:Function,effectful:number)
+
+// variable
+// example: result <- pure value
+.decl Move(result:Variable, value:Variable)
+
+// literal value
+// example: result <- pure 1
+.decl LitAssign(result:Variable, st:SimpleType, l:Literal)
+
+// node value
+// example: result_node <- pure (Ctag item0 item1)
+.decl Node(result_node:Variable, t:Tag)
+.decl NodeArgument(result_node:Variable, i:number, item:Variable)
+
+// store/fetch/update
+// example: result <- fetch value
+.decl Fetch(result:Variable, value:Variable)
+// example: result <- store value
+.decl Store(result:Variable, value:Variable)
+// example: result <- update target value
+.decl Update(result:Variable, target:Variable, value:Variable)
+
+
+// app a.k.a. call
+// example: call_result <- f value0 value1
+.decl Call(call_result:Variable, f:Function)
+.decl CallArgument(call_result:Variable, i:number, value:Variable)
+
+// bind pattern
+// example: node@(Ctag param0 param1) <- pure input_value
+.decl NodePattern(node:Variable, t:Tag, input_value:Variable)
+.decl NodeParameter(node:Variable, i:number, parameter:Variable)
+
+// function
+// example: f param0 param1 = ...
+.decl FunctionParameter(f:Function, i:number, parameter:Variable)
+
+// case + alt
+// example:
+//  case_result <- case scrut of
+//    alt_value@(Ctag param0 param1) -> basic_block_name arg0 arg1
+.decl Case(case_result:Variable, scrutinee:Variable)
+.decl Alt(case_result:Variable, alt_value:Variable, t:Tag)
+.decl AltParameter(case_result:Variable, t:Tag, i:number, parameter:Variable)
+.decl AltLiteral(case_result:Variable, alt_value:Variable, l:Literal)
+.decl AltDefault(case_result:Variable, alt_value:Variable)
+
+// pure a.k.a. return value
+// example: pure value
+.decl ReturnValue(n:CodeName, value:Variable)
+
+// instruction ordering
+.decl FirstInst(n:CodeName, result:Variable)
+.decl NextInst(prev:Variable, next:Variable)
+
+
+.input External
+.input Move
+.input LitAssign
+.input Node
+.input NodeArgument
+.input Fetch
+.input Store
+.input Update
+.input Call
+.input CallArgument
+.input NodePattern
+.input NodeParameter
+.input FunctionParameter
+.input Case
+.input Alt
+.input AltParameter
+.input AltLiteral
+.input AltDefault
+.input AltArgument
+.input ReturnValue
+.input FirstInst
+.input NextInst
+
+// Dead Variable
+//
+// Dead variable is defined in a bind, but it is never used as a scrutinee or
+// a parameter in a function call or in a move, heap operation.
+
+// Dead Parameter
+//
+// Dead parameter is defined as a parameter for a function, but it is never used
+// as a scrutinee or a parameter in a function call or in a move, heap operation.
+
+.decl UsedVariable(n:Variable)
+.decl BindVariable(n:Variable)
+.decl DeadVariable(n:Variable)
+.decl DeadParameter(n:Variable)
+.decl Effectful(n:Variable)
+
+.output DeadVariable(delimiter=",")
+.output DeadParameter(delimiter=",")
+// .output UsedVariable(delimiter=",")
+
+UsedVariable(n) :- Move(_,n).
+UsedVariable(n) :- NodeArgument(_,_,n).
+UsedVariable(n) :- Fetch(_,n).
+UsedVariable(n) :- Store(_,n).
+UsedVariable(n) :- Update(_,n,_).
+UsedVariable(n) :- Update(_,_,n).
+UsedVariable(n) :- CallArgument(_,_,n).
+UsedVariable(n) :- Case(_,n).
+UsedVariable(n) :- ReturnValue(_,n).
+UsedVariable(n) :- NodePattern(_,_,n).
+UsedVariable(n) :- NodeParameter(n,_,p), UsedVariable(p).
+
+.decl CodeNameInst(n:CodeName, v:Variable)
+.output CodeNameInst(delimiter=",")
+
+CodeNameInst(n, v) :-
+  FirstInst(n, v).
+CodeNameInst(n, v) :-
+  CodeNameInst(n, v0),
+  NextInst(v0, v).
+
+.decl ReachableCode(n:CodeName)
+.output ReachableCode(delimiter=",")
+
+ReachableCode("main").
+ReachableCode(n) :-
+  ReachableCode(n0),
+  CodeNameInst(n0, v),
+  Call(v, n).
+
+
+
+.decl EffectfulFunction(f:Function)
+
+EffectfulFunction(f)
+  :- FunctionParameter(f,_,_)
+   , CodeNameInst(f,n)
+   , Effectful(n).
+
+Effectful(n) :- External(f,1), Call(n, f), CallArgument(n,_,_).
+Effectful(n) :- Update(n,_,_).
+Effectful(n) :- EffectfulFunction(f), Call(n,f), CallArgument(n,_,_).
+
+DeadParameter(n)
+  :- FunctionParameter(_,_,n), !UsedVariable(n), !Effectful(n).
+
+BindVariable(r) :- Move(r,_).
+BindVariable(r) :- LitAssign(r,_,_).
+BindVariable(r) :- Node(r,_).
+BindVariable(r) :- Fetch(r,_).
+BindVariable(r) :- Store(r,_).
+BindVariable(r) :- Update(r,_,_).
+BindVariable(r) :- Call(r,_).
+BindVariable(r) :- NodePattern(r,_,_).
+BindVariable(p) :- NodeParameter(_,_,p).
+BindVariable(r) :- Case(r,_).
+
+DeadVariable(n)
+  :- BindVariable(n), !UsedVariable(n), !Effectful(n).

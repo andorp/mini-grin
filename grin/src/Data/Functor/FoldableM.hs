@@ -30,3 +30,9 @@ apoM
 apoM coalg = a where
   a = (pure . embed) <=< traverse f <=< coalg
   f = either pure a
+
+cataM
+  :: (Monad m, Traversable (Base t), Recursive t)
+  => (Base t a -> m a) -> t ->  m a
+cataM alg = c where
+    c = alg <=< traverse c . project

@@ -73,6 +73,11 @@ data BPat
   | BVar     Name             -- ^ var
   deriving (Eq, Show, Ord)
 
+bpatVar :: BPat -> Name
+bpatVar = \case
+  BNodePat n _ _ -> n
+  BVar     n     -> n
+
 externals :: Exp -> [External]
 externals = \case
   Program es _ -> es

@@ -55,7 +55,13 @@ library
     text,
     functor-infix,
     binary,
-    logict
+    logict,
+    filepath,
+    process,
+    split,
+    directory,
+    free,
+    comonad
 
   default-language:    Haskell2010
 

@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, TemplateHaskell, RecordWildCards #-}
-module Grin.TypeEnv where
+module Grin.TypeEnv.Result where
 
 import Prelude hiding (exp)
 

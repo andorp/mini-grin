@@ -207,16 +207,23 @@ sumSimple =
         Bind (Store "m7") (BVar "m8") $
         Bind (Pure (Val (VNode (Node (Tag F "sum") ["m8"])))) (BVar "m9") $
         Bind (Store "m9") (BVar "m10") $
-        Bind (App "eval" ["m10"]) (BNodePat "p1" (Tag C "Int") ["m11"]) $
-        App "prim_int_print" ["m11"]
+        -- Bind (App "eval" ["m10"]) (BNodePat "p1" (Tag C "Int") ["m11"]) $
+        Bind (App "eval" ["m10"]) (BVar "m13") $
+        Bind (Pure (Var "m13")) (BNodePat "p1" (Tag C "Int") ["m11"]) $
+        Bind (App "prim_int_print" ["m11"]) (BVar "m12") $
+        Pure (Var "m12")
     , Def "upto" ["u1", "u2"] $
-        Bind (App "eval" ["u1"]) (BNodePat "p2" (Tag C "Int") ["u3"]) $
-        Bind (App "eval" ["u2"]) (BNodePat "p3" (Tag C "Int") ["u4"]) $
+        -- Bind (App "eval" ["u1"]) (BNodePat "p2" (Tag C "Int") ["u3"]) $
+        Bind (App "eval" ["u1"]) (BVar "u14") $
+        Bind (Pure (Var "u14")) (BNodePat "p2" (Tag C "Int") ["u3"]) $
+        -- Bind (App "eval" ["u2"]) (BNodePat "p3" (Tag C "Int") ["u4"]) $
+        Bind (App "eval" ["u2"]) (BVar "u15") $
+        Bind (Pure (Var "u15")) (BNodePat "p3" (Tag C "Int") ["u4"]) $
         Bind (App "prim_int_gt" ["u3", "u4"]) (BVar "u5") $
-        Case "u5"
+        Bind (Case "u5"
           [ Alt "alt1" (LitPat (SBool True)) $
-                Bind (Pure (Val (VNode (Node (Tag C "Nil") [])))) (BVar "u12") $
-                Pure (Var "u12")
+                Bind (Pure (Val (VNode (Node (Tag C "Nil") [])))) (BVar "u13") $
+                Pure (Var "u13")
           , Alt "alt2" (LitPat (SBool False)) $
                 Bind (Pure (Val (VPrim (SInt64 1)))) (BVar "u6") $
                 Bind (App "prim_int_add" ["u3", "u6"]) (BVar "u7") $
@@ -224,23 +231,32 @@ sumSimple =
                 Bind (Store "u8") (BVar "u9") $
                 Bind (Pure (Val (VNode (Node (Tag F "upto") ["u9", "u2"])))) (BVar "u10") $
                 Bind (Store "u10") (BVar "u11") $
-                Pure (Val (VNode (Node (Tag C "Cons") ["u1", "u11"])))
-          ]
+                Bind (Pure (Val (VNode (Node (Tag C "Cons") ["u1", "u11"])))) (BVar "u12") $
+                Pure (Var "u12")
+          ]) (BVar "u16") $
+        Pure (Var "u16")
     , Def "sum" ["s1"] $
         Bind (App "eval" ["s1"]) (BVar "s2") $
-        Case "s2"
+        Bind (Case "s2"
           [ Alt "alt3" (NodePat (Tag C "Nil") []) $
                 Bind (Pure (Val (VPrim (SInt64 0)))) (BVar "s3") $
-                Pure (Val (VNode (Node (Tag C "Int") ["s3"])))
+                Bind (Pure (Val (VNode (Node (Tag C "Int") ["s3"])))) (BVar "s11") $
+                Pure (Var "s11")
           , Alt "alt4" (NodePat (Tag C "Cons") ["s5", "s6"]) $
-                Bind (App "eval" ["s5"]) (BNodePat "p4" (Tag C "Int") ["s7"]) $
-                Bind (App "sum" ["s6"]) (BNodePat "p5" (Tag C "Int") ["s8"]) $
+                -- Bind (App "eval" ["s5"]) (BNodePat "p4" (Tag C "Int") ["s7"]) $
+                Bind (App "eval" ["s5"]) (BVar "s13") $
+                Bind (Pure (Var "s13")) (BNodePat "p4" (Tag C "Int") ["s7"]) $
+                -- Bind (App "sum" ["s6"]) (BNodePat "p5" (Tag C "Int") ["s8"]) $
+                Bind (App "sum" ["s6"]) (BVar "s14") $
+                Bind (Pure (Var "s14")) (BNodePat "p5" (Tag C "Int") ["s8"]) $
                 Bind (App "prim_int_add" ["s7", "s8"]) (BVar "s9") $
-                Pure (Val (VNode (Node (Tag C "Int") ["s9"])))
-          ]
+                Bind (Pure (Val (VNode (Node (Tag C "Int") ["s9"])))) (BVar "s12") $
+                Pure (Var "s12")
+          ]) (BVar "s10") $
+        Pure (Var "s10")
     , Def "eval" ["e1"] $
         Bind (Fetch "e1") (BVar "e2") $
-        Case "e2"
+        Bind (Case "e2"
           [ Alt "alt5" (NodePat (Tag C "Int") ["e3"]) $
                 Bind (Pure (Val (VNode (Node (Tag C "Int") ["e3"])))) (BVar "e11") $
                 Pure (Var "e11")
@@ -258,5 +274,6 @@ sumSimple =
                 Bind (App "sum" ["e9"]) (BVar "e10") $
                 Bind (Update "e1" "e10") (BVar "up2") $
                 Pure (Var "e10")
-          ]
+          ]) (BVar "e14") $
+        Pure (Var "e14")
     ]
