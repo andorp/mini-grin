@@ -57,6 +57,7 @@ import Data.Maybe (catMaybes, mapMaybe)
 import Control.Comonad
 import Control.Comonad.Cofree
 
+import qualified Data.Text as T
 import qualified Grin.Exp   as G
 import qualified Grin.Value as G
 import qualified Grin.TypeEnv as G
@@ -73,31 +74,31 @@ newtype Literal     = Literal String deriving (Eq, Show, Ord)
 newtype SimpleType  = SimpleType String deriving (Eq, Show, Ord)
 newtype Number      = Number Int deriving (Eq, Show, Ord)
 newtype Boolean     = Boolean Bool deriving (Eq, Show, Ord)
-data    CodeName    = CVar Variable | FName Function deriving (Eq, Show, Ord)
+data    CodeName    = CVar !Variable | FName !Function deriving (Eq, Show, Ord)
 
 data CodeFact
-  = External       { f            :: Function, effectful  :: Boolean,   ret :: SimpleType }
-  | ExternalParam  { f            :: Function, i          :: Number,    st  :: SimpleType }
-  | Move           { result       :: Variable, value      :: Variable                           }
-  | LitAssign      { result       :: Variable, simpleType :: SimpleType, literal    :: Literal  }
-  | Node           { result_node  :: Variable, t          :: Tag                                }
-  | NodeArgument   { result_node  :: Variable, i          :: Number,    item        :: Variable }
-  | Fetch          { result       :: Variable, value      :: Variable                           }
-  | Store          { result       :: Variable, value      :: Variable                           }
-  | Update         { result       :: Variable, target     :: Variable,  value       :: Variable }
-  | Call           { call_result  :: Variable, f          :: Function                           }
-  | CallArgument   { call_result  :: Variable, i          :: Number,    value       :: Variable }
-  | NodePattern    { node         :: Variable, t          :: Tag,       input_value :: Variable }
-  | NodeParameter  { node         :: Variable, i          :: Number,    parameter   :: Variable }
-  | Case           { case_result  :: Variable, scrutinee  :: Variable                           }
-  | Alt            { case_result  :: Variable, alt_value  :: Variable,  t :: Tag                }
-  | AltLiteral     { case_result  :: Variable, alt_value  :: Variable,  l           :: Literal  }
-  | AltDefault     { case_result  :: Variable, alt_value  :: Variable                           }
-  | ReturnValue    { n            :: CodeName, value      :: Variable                           }
-  | FirstInst      { n            :: CodeName, result     :: Variable                           }
-  | NextInst       { prev         :: Variable, next       :: Variable                           }
-  | FunctionParameter { f :: Function, i :: Number, parameter :: Variable }
-  | AltParameter      { case_result :: Variable, t :: Tag, i :: Number, parameter :: Variable }
+  = External       { f            :: !Function, effectful  :: !Boolean,   ret :: !SimpleType }
+  | ExternalParam  { f            :: !Function, i          :: !Number,    st  :: !SimpleType }
+  | Move           { result       :: !Variable, value      :: !Variable                           }
+  | LitAssign      { result       :: !Variable, simpleType :: !SimpleType, literal    :: !Literal  }
+  | Node           { result_node  :: !Variable, t          :: !Tag                                }
+  | NodeArgument   { result_node  :: !Variable, i          :: !Number,    item        :: !Variable }
+  | Fetch          { result       :: !Variable, value      :: !Variable                           }
+  | Store          { result       :: !Variable, value      :: !Variable                           }
+  | Update         { result       :: !Variable, target     :: !Variable,  value       :: !Variable }
+  | Call           { call_result  :: !Variable, f          :: !Function                           }
+  | CallArgument   { call_result  :: !Variable, i          :: !Number,    value       :: !Variable }
+  | NodePattern    { node         :: !Variable, t          :: !Tag,       input_value :: !Variable }
+  | NodeParameter  { node         :: !Variable, i          :: !Number,    parameter   :: !Variable }
+  | Case           { case_result  :: !Variable, scrutinee  :: !Variable                           }
+  | Alt            { case_result  :: !Variable, alt_value  :: !Variable,  t :: !Tag                }
+  | AltLiteral     { case_result  :: !Variable, alt_value  :: !Variable,  l           :: !Literal  }
+  | AltDefault     { case_result  :: !Variable, alt_value  :: !Variable                           }
+  | ReturnValue    { n            :: !CodeName, value      :: !Variable                           }
+  | FirstInst      { n            :: !CodeName, result     :: !Variable                           }
+  | NextInst       { prev         :: !Variable, next       :: !Variable                           }
+  | FunctionParameter { f :: !Function, i :: !Number, parameter :: !Variable }
+  | AltParameter      { case_result :: !Variable, t :: !Tag, i :: !Number, parameter :: !Variable }
   deriving (Eq, Show, Ord, Generic)
 
 class ToFact t where
@@ -222,6 +223,22 @@ simpleValueToFact v sv =
       G.SBool   b -> (stToDatalogST G.T_Bool,   show b)
       G.SChar   c -> (stToDatalogST G.T_Char,   show c)
 
+gtagToDtag :: G.Tag -> Tag
+gtagToDtag (G.Tag tt name) = Tag $ G.mkName (renderTagType tt) <> name
+  where
+    renderTagType :: G.TagType -> String
+    renderTagType G.C = "C"
+    renderTagType G.F = "F"
+    renderTagType (G.P m) = "P-" ++ show m ++ "-"
+
+dtagToGtag :: Tag -> G.Tag
+dtagToGtag (Tag tag) = case G.nameString tag of
+  'C':name -> G.Tag G.C (G.mkName name)
+  'F':name -> G.Tag G.F (G.mkName name)
+  'P':_ -> case T.splitOn "-" $ G.getName tag of
+    ["P",(read . show) -> m, name] -> G.Tag (G.P m) (G.NM name)
+    _ -> error $ show tag
+
 emitAlg :: G.ExpF (G.Exp, DL ()) -> DL ()
 emitAlg = \case
   G.ProgramF externals defs -> do
@@ -253,7 +270,7 @@ emitAlg = \case
   -- .decl Node(result_node:Variable, t:Tag)
   -- .decl NodeArgument(result_node:Variable, i:number, item:Variable)
   G.EBindF ((G.SPure (G.Val (G.VNode (G.Node tag items)))), lhs) (G.BVar res) (_, rhs) -> do
-    emit $ (Node { result_node = Variable res, t = Tag $ G.tagName tag })
+    emit $ (Node { result_node = Variable res, t = gtagToDtag tag })
          : zipWith (\n v ->
             NodeArgument
               { result_node = Variable res
@@ -300,7 +317,7 @@ emitAlg = \case
   G.EBindF (G.SPure (G.Var inp_val), lhs) (G.BNodePat nd tag pms) (_, rhs) -> do
     emit  $ (NodePattern
               { node        = Variable nd
-              , t           = Tag $ G.tagName tag
+              , t           = gtagToDtag tag
               , input_value = Variable inp_val
               })
           : zipWith
@@ -331,12 +348,12 @@ emitAlg = \case
           G.Alt n (G.NodePat tag args) _ ->
               Alt { case_result = Variable cs_res
                   , alt_value = Variable n
-                  , t = Tag $ G.tagName tag
+                  , t = gtagToDtag tag
                   }
             : zipWith (\j a ->
                 AltParameter
                   { case_result = Variable cs_res
-                  , t           = Tag $ G.tagName tag
+                  , t           = gtagToDtag tag
                   , i           = Number j
                   , parameter   = Variable a
                   })

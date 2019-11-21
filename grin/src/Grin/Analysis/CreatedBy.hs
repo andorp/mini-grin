@@ -115,9 +115,9 @@ createNodeVariables xs
       | x <- xs
       , (v, nMap) <- case x of
           VariableNodeParamType v t i st ->
-            [ (v, Map.singleton (dTagToTag t) $ Map.singleton i $ Set.singleton $ dToSimpleType st) ]
+            [ (v, Map.singleton (D.dtagToGtag t) $ Map.singleton i $ Set.singleton $ dToSimpleType st) ]
           VariableNodeTag v t ->
-            [ (v, Map.singleton (dTagToTag t) $ Map.empty) ]
+            [ (v, Map.singleton (D.dtagToGtag t) $ Map.empty) ]
           _ -> []
       ]
   where
@@ -159,9 +159,6 @@ parameters checkParameters m = map
 mixAndMatch :: [[a]] -> [[a]]
 mixAndMatch []       = [ [] ]
 mixAndMatch (xs:xss) = [ (y:ys) | y <- xs, ys <- mixAndMatch xss ]
-
-dTagToTag :: D.Tag -> G.Tag
-dTagToTag (D.Tag n) = G.Tag C n
 
 dToSimpleType :: D.SimpleType -> TEI.ST
 dToSimpleType d = case dToType d of
