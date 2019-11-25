@@ -6,7 +6,7 @@ import Control.Monad (when)
 import Control.Monad.Fail (MonadFail(..))
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Logic hiding (fail)
-import Control.Monad.Reader (MonadReader(..))
+import Control.Monad.Reader (MonadReader(..), asks)
 import Control.Monad.State (MonadState(..))
 import Control.Monad.Trans.RWS.Strict hiding (ask, local, get)
 import Data.Maybe (fromMaybe, fromJust)
@@ -200,6 +200,9 @@ putStore o = (absStr .= o)
 getStore :: AbstractT m (Store Loc (Set Node))
 getStore = _absStr <$> Control.Monad.State.get
 
+getEnv :: AbstractT m (Env T)
+getEnv = Control.Monad.Reader.asks _absEnv
+
 evalCache
   :: (Monad m, MonadFail m, MonadIO m)
   => ((Exp -> AbstractT m T) -> (Exp -> AbstractT m T)) -> (Exp -> AbstractT m T) -> Exp -> AbstractT m T
@@ -209,7 +212,8 @@ evalCache ev0 ev1 e = do
       ev0 ev1 e
     Just ce -> do
       s <- getStore
-      let c = Config { cfgExp = ce, cfgStore = s }
+      n <- getEnv
+      let c = Config { cfgExp = ce, cfgStore = s, cfgEnv = n }
       outc <- getCacheOut
       if inCache c outc
         then do

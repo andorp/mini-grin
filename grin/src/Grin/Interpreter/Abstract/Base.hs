@@ -161,6 +161,7 @@ data CExp = CApp Name [Name]
 data Config = Config
   { cfgExp    :: CExp     -- The function which was called
   , cfgStore  :: AbsStore -- The abstract store in which this configuration is called.
+  , cfgEnv    :: Env T
   } deriving (Eq, Show, Ord)
 
 -- | The cache associates a function call
