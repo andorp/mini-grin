@@ -45,14 +45,11 @@ data CreatedByData
   | VariableNodeTag           { variable :: Name, t :: D.Tag }
   | VariableNodeParamType     { variable :: Name, t :: D.Tag , i :: Int, st :: D.SimpleType }
   | VariableAbstractLocation  { variable :: Name, loc :: Name }
-  | FunParam         { function :: Name, i :: Int, parameter :: Name }
-  | FunReturn        { function :: Name, variable :: Name }
---  | VarPointsTo               { variable :: Name, target :: Name }
--- TODO: External, ExternalParameter, FunctionParameter, FunctionReturn
+  | FunParam                  { function :: Name, i :: Int, parameter :: Name }
+  | FunReturn                 { function :: Name, variable :: Name }
   deriving (Show)
 
 instance FromFact CreatedByData where
---  fromFact "VarPointsTo"              [v,t]       = Just $ VarPointsTo (fromString v) (fromString t)
   fromFact "Heap"                     [l,t]       = Just $ Heap (fromString l) (fromString t)
   fromFact "AbstractLocation"         [v]         = Just $ AbstractLocation (fromString v)
   fromFact "VariableSimpleType"       [v,t]       = Just $ VariableSimpleType (fromString v) (D.SimpleType t)
@@ -68,12 +65,12 @@ data CreatedByResult = CreatedByResult TER.TypeEnv
 
 valuesFromCreatedByData :: [CreatedByData] -> Map.Map Name (Set.Set TEI.T)
 valuesFromCreatedByData xs = Map.unionsWith Set.union
-  [ Map.fromList
-      [ (n, Set.singleton (ST (ST_Loc (Loc l))))
+  [ Map.unionsWith (<>)
+      [ (Map.singleton n (Set.singleton (ST (ST_Loc (Loc l)))))
       | VariableAbstractLocation n l <- xs
       ]
-  , Map.fromList
-      [ (v, Set.singleton (dToType t))
+  , Map.unionsWith (<>)
+      [ (Map.singleton v (Set.singleton (dToType t)))
       | VariableSimpleType v t <- xs
       ]
   , createNodeVariables xs
@@ -102,11 +99,15 @@ functionsFromCreatedByData variables xs
       [ retOrParam
       | x <- xs
       , retOrParam <- case x of
-          FunParam f i p -> [Map.singleton f (Set.empty, Map.singleton i $ fromMaybe (error ("Missing: " ++ show p)) $ Map.lookup p variables)]
-          FunReturn f r  -> [Map.singleton f (fromMaybe (error ("Missing: " ++ show r)) $ Map.lookup r variables, Map.empty)]
+          FunParam f i p -> [Map.singleton f ( Set.empty
+                                             , Map.singleton i $ lookup' p variables)]
+          FunReturn f r  -> [Map.singleton f ( lookup' r variables
+                                             , Map.empty
+                                             )]
           _ -> []
       ]
-
+  where
+    lookup' p m = fromMaybe (error ("Missing: " ++ show p)) $ Map.lookup p variables
 
 createNodeVariables :: [CreatedByData] -> Map.Map Name (Set.Set TEI.T)
 createNodeVariables xs
