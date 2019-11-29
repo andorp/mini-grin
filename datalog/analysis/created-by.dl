@@ -83,7 +83,6 @@
 .input AltParameter
 .input AltLiteral
 .input AltDefault
-.input AltArgument
 .input ReturnValue
 .input FirstInst
 .input NextInst
@@ -112,7 +111,6 @@ ReachableInst(v) :-
   ReachableCode(n),
   CodeNameInst(n, v).
 
-/*
 .decl VarPointsTo(v:Variable, target:Variable)
 .output VarPointsTo(delimiter=",")
 
@@ -134,7 +132,6 @@ VarPointsTo(v,t) :-
   CallArgument(r, i, v0),
   VarPointsTo(v0, t),
   ReachableInst(r).
-*/
 
 // Value Computation
 .decl Value(v:Variable, value:Variable)
@@ -182,20 +179,6 @@ Value(v, item_origin) :-
   Value(heap, heap_orig),
   Heap(heap_orig, item),
   Value(item, item_origin).
-
-/*
-Value(v, val) :-
-  Fetch(v, v0),
-  Value(v0, val0),
-  Store(val0, sv),
-  Value(sv, val).
-
-Value(v, val) :-
-  Fetch(v, v0),
-  Value(v0, val0),
-  Update(_, val0, sv),
-  Value(sv, val).
-*/
 
 // fun param
 Value(p, val) :-
@@ -275,8 +258,8 @@ Value(case_result, val) :-
 AbstractLocation(n) :- Heap(n,_).
 
 .output VariableSimpleType(delimiter=",")
-// TODO: Add update with T_Unit as simple type
 VariableSimpleType(n,st) :- LitAssign(n,st,_).
+VariableSimpleType(n,"Unit") :- Update(n,_,_).
 VariableSimpleType(n,st) :- External(f,_,st), Call(n,f).
 VariableSimpleType(n,st) :- ExternalParam(f,i,st), Call(r,f), CallArgument(r,i,n).
 VariableSimpleType(n,st) :- Value(n,r), VariableSimpleType(r,st).
