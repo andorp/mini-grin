@@ -10,7 +10,7 @@ import Grin.Value
   , SimpleValue(SInt64,SBool)
   )
 
-import Grin.TypeEnv
+import Grin.TypeEnv.Result
   ( SimpleType(T_Int64, T_Bool, T_Unit)
   , Ty(TySimple)
   )
@@ -19,6 +19,7 @@ import Grin.Exp
   ( External(External)
   , BPat(BVar,BNodePat)
   , CPat(NodePat, LitPat)
+  , printGrin
   )
 
 import Grin.GExp
@@ -26,12 +27,19 @@ import Grin.GExp
   , ExpCtx(Prg)
   )
 
+import Grin.GExpToExp
+
+
 -- * Test expression
 
-{-
-primop pure
-  prim_int_add :: T_Int64 -> T_Int64 -> T_Int64
+printExamples :: IO ()
+printExamples = do
+  printGrin $ gexpToExp add
+  printGrin $ gexpToExp fact
+  printGrin $ gexpToExp sumSimple
 
+{-
+prim_int_add :: T_Int64 -> T_Int64 -> T_Int64
 add s1 s2 =
   s3 <- prim_int_add $ s1 s2
   pure s3
@@ -64,7 +72,6 @@ prim_int_sub :: T_Int64 -> T_Int64 -> T_Int64
 prim_int_mul :: T_Int64 -> T_Int64 -> T_Int64
 prim_int_eq :: T_Int64 -> T_Int64 -> T_Bool
 prim_int_print :: T_Int64 -> T_Int64 -> T_Unit
-
 fact f1 =
   f2 <- pure 0
   f3 <- prim_int_eq $ f1 f2
@@ -81,7 +88,7 @@ fact f1 =
 main =
   m1 <- pure 10
   m2 <- fact $ m1
-  prim_int_print $ m2
+  pip1 <- prim_int_print $ m2
   pure m2
 -}
 
@@ -121,7 +128,6 @@ prim_int_sub :: T_Int64 -> T_Int64 -> T_Int64
 prim_int_eq :: T_Int64 -> T_Int64 -> T_Bool
 prim_int_gt :: T_Int64 -> T_Int64 -> T_Bool
 prim_int_print :: T_Int64 -> T_Int64 -> T_Unit
-
 main =
   m1 <- pure 1
   m2 <- pure 100
@@ -133,17 +139,21 @@ main =
   m8 <- store m7
   m9 <- pure (Fsum m8)
   m10 <- store m9
-  p1@(CInt m11) <- eval $ m10
-  prim_int_print $ m11
+  m13 <- eval $ m10
+  p1@(CInt m11) <- pure m13
+  m12 <- prim_int_print $ m11
+  pure m12
 
 upto u1 u2 =
-  p2@(CInt u3) <- eval $ u1
-  p3@(CInt u4) <- eval $ u2
+  u14 <- eval $ u1
+  p2@(CInt u3) <- pure u14
+  u15 <- eval $ u2
+  p3@(CInt u4) <- pure u15
   u5 <- prim_int_gt $ u3 u4
-  case u5 of
+  u16 <- case u5 of
     alt1@#True ->
-      u12 <- pure (CNil)
-      pure u12
+      u13 <- pure (CNil)
+      pure u13
     alt2@#False ->
       u6 <- pure 1
       u7 <- prim_int_add $ u3 u6
@@ -151,23 +161,30 @@ upto u1 u2 =
       u9 <- store u8
       u10 <- pure (Fupto u9 u2)
       u11 <- store u10
-      pure (CCons u1 u11)
+      u12 <- pure (CCons u1 u11)
+      pure u12
+  pure u16
 
 sum s1 =
   s2 <- eval $ s1
-  case s2 of
+  s10 <- case s2 of
     alt3@(CNil) ->
       s3 <- pure 0
-      pure (CInt s3)
+      s11 <- pure (CInt s3)
+      pure s11
     alt4@(CCons s5 s6) ->
-      p4@(CInt s7) <- eval $ s5
-      p5@(CInt s8) <- sum $ s6
+      s13 <- eval $ s5
+      p4@(CInt s7) <- pure s13
+      s14 <- sum $ s6
+      p5@(CInt s8) <- pure s14
       s9 <- prim_int_add $ s7 s8
-      pure (CInt s9)
+      s12 <- pure (CInt s9)
+      pure s12
+  pure s10
 
 eval e1 =
   e2 <- fetch e1
-  case e2 of
+  e14 <- case e2 of
     alt5@(CInt e3) ->
       e11 <- pure (CInt e3)
       pure e11
@@ -179,12 +196,13 @@ eval e1 =
       pure e13
     alt8@(Fupto e6 e7) ->
       e8 <- upto $ e6 e7
-      update e1 e8
+      up1 <- update e1 e8
       pure e8
     alt9@(Fsum e9) ->
       e10 <- sum $ e9
-      update e1 e10
+      up2 <- update e1 e10
       pure e10
+  pure e14
 -}
 
 sumSimple :: Exp 'Prg

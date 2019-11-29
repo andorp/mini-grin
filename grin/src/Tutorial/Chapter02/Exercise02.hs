@@ -10,14 +10,13 @@ import Control.Monad.State (MonadState(..), modify)
 import Data.Maybe (fromMaybe, fromJust, isNothing)
 import Data.Function (fix)
 import Grin.Exp (Exp(..), CPat(..), Alt, Program, externals, eName)
-import qualified Grin.TypeEnv as Grin
 import Grin.Value hiding (Val, Node)
 import Lens.Micro.Platform
 import Prelude hiding (fail)
 import Data.Maybe (mapMaybe)
-
 import Grin.Interpreter.Env (Env)
 import Grin.Interpreter.Store (Store(..))
+import qualified Grin.TypeEnv.Result as Grin
 import qualified Grin.Interpreter.Env as Env
 import qualified Grin.Interpreter.Store as Store
 import qualified Data.Map.Strict as Map
@@ -25,13 +24,18 @@ import qualified Data.Set as Set; import Data.Set (Set)
 import qualified Grin.Value as Grin
 
 import Grin.Interpreter.Abstract.Base
-  ( AbstractT(..), Cache, TypeEnv, T(..), ST(..), Loc(..), AbsStore(..), AbsEnv(..), AbsState(..), Node(..)
-  , runAbstractT, absStr, absEnv, forMonadPlus, typeOfSimpleValue
+  ( AbstractT(..), Cache,  AbsStore(..)
+  , AbsEnv(..), AbsState(..)
+  , runAbstractT, absStr, absEnv, forMonadPlus
+  )
+import Grin.TypeEnv.Intermediate
+  ( TypeEnv, T(..), ST(..), Loc(..), Node(..)
+  , typeOfSimpleValue
   )
 import Grin.Interpreter.Abstract.Interpreter
   ( evalCache, fixCache, collectFunctionType, collectEnv
   )
-import Grin.Interpreter.Abstract.TypeInference (calcTypeEnv)
+import Grin.TypeEnv.Convert (calcTypeEnv)
 
 import Tutorial.Chapter02.Exercise01 as Exercise
 

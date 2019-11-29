@@ -1,13 +1,13 @@
 {-# LANGUAGE LambdaCase #-}
 module Tutorial.Chapter03.Exercise02 where
 
-import Grin.Exp
-import Grin.TypeEnv
 import Data.Functor.Foldable
-import Lens.Micro ((^.))
-import Grin.Interpreter.Abstract.Base hiding (TypeEnv)
-import Grin.Interpreter.Abstract.TypeInference (typeOfValue)
 import Data.Maybe (mapMaybe)
+import Grin.Exp
+import Grin.Interpreter.Abstract.Base
+import Grin.TypeEnv.Convert (typeOfValue)
+import Grin.TypeEnv.Result
+import Lens.Micro ((^.))
 
 import qualified Data.Set as Set
 import qualified Data.Map.Strict as Map hiding (filter)

@@ -16,6 +16,7 @@ import Grin.Interpreter.Base (Interpreter(..))
 import Grin.Pretty hiding (SChar)
 import Lens.Micro.Platform
 import Prelude hiding (fail)
+import Grin.TypeEnv.Intermediate
 
 import Grin.Interpreter.Store (Store(..))
 import Grin.Interpreter.Env (Env(..))

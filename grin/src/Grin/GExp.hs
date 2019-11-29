@@ -3,13 +3,11 @@ module Grin.GExp
   ( module Grin.GExp
   , module Grin.Exp
   , module Grin.Value
-  , module Grin.TypeEnv
   ) where
 
 import Data.Kind (Constraint)
 import Grin.Exp (BPat(..), CPat(..), External(..))
 import Grin.Value
-import Grin.TypeEnv
 import GHC.TypeLits
 
 

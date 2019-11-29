@@ -1,23 +1,22 @@
 {-# LANGUAGE DataKinds #-}
 module Tutorial.Chapter03.Exercise01Spec where
 
-import Tutorial.Chapter01.Exercise02 (interpreter, knownExternals)
-import Tutorial.Chapter03.Exercise01
-import Test.Hspec
 import Grin.Exp (programToDefs)
 import Grin.GExp
 import Grin.GExpToExp
+import Grin.TypeEnv.Result
+import Test.Hspec
+import Tutorial.Chapter01.Exercise02 (interpreter, knownExternals)
+import Tutorial.Chapter03.Exercise01
+
 import qualified Data.Map as Map
--- import Grin.Pretty (PP(..))
 
 
 spec :: Spec
 spec = do
   it "Inlive eval works for a simple function" $ do
     let ex = gexpToExp evalExp
---    print $ PP ex
     let expInlinedEval = inlineEval ex
---    print $ PP expInlinedEval
     resBefore <- interpreter knownExternals ex
     resAfter  <- interpreter knownExternals expInlinedEval
     let defs = programToDefs expInlinedEval

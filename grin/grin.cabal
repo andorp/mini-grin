@@ -18,7 +18,9 @@ library
     Data.Functor.FoldableM
     Grin.CheatSheet
     Grin.Value
-    Grin.TypeEnv
+    Grin.TypeEnv.Result
+    Grin.TypeEnv.Intermediate
+    Grin.TypeEnv.Convert
     Grin.Exp
     Grin.GExp
     Grin.GExpToExp

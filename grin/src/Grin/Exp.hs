@@ -9,7 +9,7 @@ module Grin.Exp
 import Data.Functor.Foldable
 import Data.Functor.Foldable.TH
 import Grin.Pretty
-import Grin.TypeEnv
+import Grin.TypeEnv.Result
 import Grin.Value
 import Prelude hiding (exp)
 import Data.Map (Map, fromList)

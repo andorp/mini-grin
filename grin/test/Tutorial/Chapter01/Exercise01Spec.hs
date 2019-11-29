@@ -1,13 +1,12 @@
 module Tutorial.Chapter01.Exercise01Spec where
 
 import Grin.Exp
+import Grin.TypeEnv.Result
 import Grin.Value
-import Grin.TypeEnv
-import qualified Grin.Examples as Examples
-
+import Test.Hspec
 import Tutorial.Chapter01.Exercise01
 
-import Test.Hspec
+import qualified Grin.Examples as Examples
 
 
 main :: IO ()

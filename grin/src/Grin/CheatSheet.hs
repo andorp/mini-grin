@@ -1,13 +1,14 @@
 {-# LANGUAGE ConstraintKinds #-}
 module Grin.CheatSheet where
 
-import qualified Grin.Value
 import qualified Grin.Exp
 import qualified Grin.GExp
+import qualified Grin.Interpreter.Abstract.Base
 import qualified Grin.Interpreter.Env
 import qualified Grin.Interpreter.Store
+import qualified Grin.TypeEnv.Intermediate
+import qualified Grin.Value
 import qualified Tutorial.Chapter01.Exercise02
-import qualified Grin.Interpreter.Abstract.Base
 
 
 -- * Prelude
@@ -130,14 +131,14 @@ type C01E02_Definitional = Tutorial.Chapter01.Exercise02.Definitional
 
 type AbstractT = Grin.Interpreter.Abstract.Base.AbstractT
 type Cache = Grin.Interpreter.Abstract.Base.Cache
-type TypeEnv = Grin.Interpreter.Abstract.Base.TypeEnv
-type T = Grin.Interpreter.Abstract.Base.T
-type ST = Grin.Interpreter.Abstract.Base.ST
-type Loc = Grin.Interpreter.Abstract.Base.Loc
+type TypeEnv = Grin.TypeEnv.Intermediate.TypeEnv
+type T = Grin.TypeEnv.Intermediate.T
+type ST = Grin.TypeEnv.Intermediate.ST
+type Loc = Grin.TypeEnv.Intermediate.Loc
 type AbsStore = Grin.Interpreter.Abstract.Base.AbsStore
 type AbsEnv = Grin.Interpreter.Abstract.Base.AbsEnv
 type AbsState = Grin.Interpreter.Abstract.Base.AbsState
-type C02E02_Node = Grin.Interpreter.Abstract.Base.Node
+type C02E02_Node = Grin.TypeEnv.Intermediate.Node
 
 -- * Interlude: Connection between pointer analysis, type systems and abstract interpretations
 --

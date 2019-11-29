@@ -12,23 +12,25 @@ import Data.Function (fix)
 import Data.Maybe (fromJust)
 import Data.Maybe (isNothing)
 import Grin.Exp (Program, eName, externals, Exp(SApp))
-import Grin.TypeEnv hiding (TypeEnv(..), Loc)
-import Grin.Value (Name, SimpleValue)
-import Grin.Interpreter.Base (baseEval)
-import Grin.Pretty hiding (SChar)
-import Prelude hiding (fail)
 import Grin.GExpToExp (gexpToExp)
-
-import Grin.Interpreter.Store (Store(..))
+import Grin.Interpreter.Abstract.Base
+import Grin.Interpreter.Abstract.Interpreter
+import Grin.Interpreter.Base (baseEval)
 import Grin.Interpreter.Env (Env(..))
+import Grin.Interpreter.Store (Store(..))
+import Grin.Pretty hiding (SChar)
+import Grin.TypeEnv.Convert
+import Grin.TypeEnv.Intermediate
+import Grin.TypeEnv.Result hiding (TypeEnv(..), Loc)
+import Grin.Value (Name, SimpleValue)
+import Prelude hiding (fail)
+
 import qualified Data.List as List (nub)
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set; import Data.Set (Set)
-import qualified Grin.TypeEnv as Grin
 import qualified Grin.Examples as Examples
+import qualified Grin.TypeEnv.Result as Grin
 
-import Grin.Interpreter.Abstract.Base
-import Grin.Interpreter.Abstract.Interpreter
 
 
 -- * Tests
@@ -64,5 +66,3 @@ abstractEval prog = do
     prim_int_eq     = (ST ST_Bool,  [ST ST_Int64, ST ST_Int64])
     prim_int_gt     = (ST ST_Bool,  [ST ST_Int64, ST ST_Int64])
     prim_int_print  = (UT, [ST ST_Int64])
-
-
