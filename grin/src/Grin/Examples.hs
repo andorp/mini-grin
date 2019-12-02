@@ -34,8 +34,8 @@ import Grin.GExpToExp
 
 printExamples :: IO ()
 printExamples = do
-  printGrin $ gexpToExp add
-  printGrin $ gexpToExp fact
+--  printGrin $ gexpToExp add
+--  printGrin $ gexpToExp fact
   printGrin $ gexpToExp sumSimple
 
 {-

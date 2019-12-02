@@ -17,6 +17,7 @@ instance Analysis DeadParameterElimination where
   outputFactFiles _ = ["DeadParameter"]
   fromFacts _ _     = DeadParameters
 
+-- TODO
 instance Transformation DeadParameterElimination where
   transform _ _ _ = Nothing
 

@@ -16,23 +16,29 @@ library
   ghc-options:         -Wall -Wno-orphans
   exposed-modules:
     Data.Functor.FoldableM
+    Grin.Analysis.BoqHPT
     Grin.CheatSheet
-    Grin.Value
-    Grin.TypeEnv.Result
-    Grin.TypeEnv.Intermediate
-    Grin.TypeEnv.Convert
+    Grin.Datalog
+    Grin.Examples
     Grin.Exp
     Grin.GExp
     Grin.GExpToExp
-    Grin.Examples
-    Grin.Pretty
-    Grin.Interpreter.Env
-    Grin.Interpreter.Store
-    Grin.Interpreter.Base
-    Grin.Interpreter.Definitional
     Grin.Interpreter.Abstract.Base
     Grin.Interpreter.Abstract.Interpreter
     Grin.Interpreter.Abstract.TypeInference
+    Grin.Interpreter.Base
+    Grin.Interpreter.Definitional
+    Grin.Interpreter.Env
+    Grin.Interpreter.Store
+    Grin.Pipeline.Base
+    Grin.Pretty
+    Grin.Transformation.Base
+    Grin.Transformation.DeadParameterElimination
+    Grin.Transformation.DeadVariableElimination
+    Grin.TypeEnv.Convert
+    Grin.TypeEnv.Intermediate
+    Grin.TypeEnv.Result
+    Grin.Value
     Tutorial.Chapter01.Exercise01
     Tutorial.Chapter01.Exercise02
     Tutorial.Chapter02.Exercise01

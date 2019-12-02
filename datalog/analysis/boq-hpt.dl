@@ -146,7 +146,8 @@ Heap(v,i) :- Store(v,i).
 Heap(heap_orig, sv) :-
   Update(_, heap, sv),
   Value(heap, heap_orig),
-  Heap(heap_orig, _).
+  Heap(heap_orig, _),
+  SharedLocation(heap).
 
 Value(n,n) :-
   LitAssign(n,_,_).
@@ -296,3 +297,31 @@ FunReturn(f,n) :- External(f,_,_), Call(n,f).
 
 FunParam(f,i,p) :- FunctionParameter(f,i,p).
 FunParam(f,i,p) :- ExternalParam(f,i,_), Call(r,f), CallArgument(r,i,p).
+
+/* If a concrete instance of the abstract location may be subject to a fetch more than once, */
+.decl SharedLocation(n:Variable)
+.output SharedLocation(delimiter=",")
+
+SharedLocation(l) :-
+  AbstractLocation(l), Value(v,l), NonLinearVar(v).
+
+// For non-linear variables
+// A location may only become shared if it is a possible value of a nonlinear variable.
+//
+
+.decl NonLinearVar(v:Variable)
+.output NonLinearVar(delimiter=",")
+
+// Variable used in different use cases.
+//                   CA F M NP RV
+// CallArgument   CA -- - x xx xx
+// Move           M  -- - - xx xx
+// NodeParameter  NP -- - - -- xx
+// ReturnValue    RV -- - - -- --
+
+NonLinearVar(n) :- CallArgument(_,_,n),   Move(_,n).
+NonLinearVar(n) :- CallArgument(_,_,n),   NodeArgument(_,_,n).
+NonLinearVar(n) :- CallArgument(_,_,n),   ReturnValue(_,n).
+NonLinearVar(n) :- Move(_,n),             NodeArgument(_,_,n).
+NonLinearVar(n) :- Move(_,n),             ReturnValue(_,n).
+NonLinearVar(n) :- NodeParameter(_,_,n),  ReturnValue(_,n).

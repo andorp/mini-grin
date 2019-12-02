@@ -3,7 +3,7 @@ module Grin.Transformation.DeadVariableElimination where
 
 import Grin.Exp
 import Grin.Value
-import Grin.TypeEnv
+import Grin.TypeEnv.Result
 import Data.Set
 import Data.Functor.Foldable
 import Grin.Datalog hiding (External)

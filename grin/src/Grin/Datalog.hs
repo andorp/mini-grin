@@ -60,7 +60,7 @@ import Control.Comonad.Cofree
 import qualified Data.Text as T
 import qualified Grin.Exp   as G
 import qualified Grin.Value as G
-import qualified Grin.TypeEnv as G
+import qualified Grin.TypeEnv.Result as G
 import qualified Data.Foldable
 import qualified Data.Map as Map
 

@@ -14,7 +14,7 @@ import System.Directory
 import Control.Monad
 import Grin.Transformation.Base (ExpChanged(..), bindNormalisation)
 
-import Grin.Analysis.CreatedBy
+import Grin.Analysis.BoqHPT
 
 import qualified Grin.Transformation.Base as T (Transformation(..), Analysis(..))
 import qualified Grin.Transformation.DeadParameterElimination as Transformation
@@ -69,7 +69,7 @@ test = do
   --      getExpression
   printGrin (gexpToExp sumSimple)
   execute (gexpToExp sumSimple) $ do
-    join $ analysis $ Analysis CreatedBy (\(CreatedByResult t) -> liftIO $ printTypeEnv t)
+    join $ analysis $ Analysis BoqHPT (\(BoqHPTResult t) -> liftIO $ printTypeEnv t)
   --printGrin test2
   --execute test2 $ do
   --  analysis $ Analysis CreatedBy

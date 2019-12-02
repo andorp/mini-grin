@@ -1,5 +1,5 @@
 {-# LANGUAGE TypeFamilies, LambdaCase #-}
-module Grin.Analysis.CreatedBy where
+module Grin.Analysis.BoqHPT where
 
 import Grin.Value hiding (Node)
 import Grin.Transformation.Base
@@ -20,13 +20,13 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 
 
-data CreatedBy = CreatedBy
+data BoqHPT = BoqHPT
 
-instance Analysis CreatedBy where
-  type Fact   CreatedBy = CreatedByData
-  type Result CreatedBy = CreatedByResult
-  analysisName    _ = "CreatedBy"
-  datalogProgram  _ = "created-by"
+instance Analysis BoqHPT where
+  type Fact   BoqHPT = BoqHPTData
+  type Result BoqHPT = BoqHPTResult
+  analysisName    _ = "BoqHPT"
+  datalogProgram  _ = "boq-hpt"
   outputFactFiles _ = [ "AbstractLocation"
                       , "VariableSimpleType"
                       , "VariableNodeTag"
@@ -35,10 +35,11 @@ instance Analysis CreatedBy where
                       , "Heap"
                       , "FunParam"
                       , "FunReturn"
+                      , "SharedLocation"
                       ]
-  fromFacts       _ = CreatedByResult . typeEnvFromCreatedByData
+  fromFacts       _ = BoqHPTResult . typeEnvFromBoqHPTData
 
-data CreatedByData
+data BoqHPTData
   = Heap                      { location :: Name, target :: Name }
   | AbstractLocation          { variable :: Name }
   | VariableSimpleType        { variable :: Name, st :: D.SimpleType }
@@ -47,9 +48,10 @@ data CreatedByData
   | VariableAbstractLocation  { variable :: Name, loc :: Name }
   | FunParam                  { function :: Name, i :: Int, parameter :: Name }
   | FunReturn                 { function :: Name, variable :: Name }
+  | SharedLocation            { loc :: Name }
   deriving (Show)
 
-instance FromFact CreatedByData where
+instance FromFact BoqHPTData where
   fromFact "Heap"                     [l,t]       = Just $ Heap (fromString l) (fromString t)
   fromFact "AbstractLocation"         [v]         = Just $ AbstractLocation (fromString v)
   fromFact "VariableSimpleType"       [v,t]       = Just $ VariableSimpleType (fromString v) (D.SimpleType t)
@@ -58,13 +60,14 @@ instance FromFact CreatedByData where
   fromFact "VariableNodeParamType"    [n,t,i,st]  = Just $ VariableNodeParamType (fromString n) (D.Tag (fromString t)) (read i) (D.SimpleType st)
   fromFact "FunParam"                 [f,i,p]     = Just $ FunParam (fromString f) (read i) (fromString p)
   fromFact "FunReturn"                [f,r]       = Just $ FunReturn (fromString f) (fromString r)
+  fromFact "SharedLocation"           [l]         = Just $ SharedLocation (fromString l)
   fromFact _ _                                    = Nothing
 
-data CreatedByResult = CreatedByResult TER.TypeEnv
+data BoqHPTResult = BoqHPTResult TER.TypeEnv
   deriving (Show)
 
-valuesFromCreatedByData :: [CreatedByData] -> Map.Map Name (Set.Set TEI.T)
-valuesFromCreatedByData xs = Map.unionsWith Set.union
+valuesFromBoqHPTData :: [BoqHPTData] -> Map.Map Name (Set.Set TEI.T)
+valuesFromBoqHPTData xs = Map.unionsWith Set.union
   [ Map.unionsWith (<>)
       [ (Map.singleton n (Set.singleton (ST (ST_Loc (Loc l)))))
       | VariableAbstractLocation n l <- xs
@@ -76,7 +79,7 @@ valuesFromCreatedByData xs = Map.unionsWith Set.union
   , createNodeVariables xs
   ]
 
-heapValues :: Map.Map Name (Set.Set TEI.T) -> [CreatedByData] -> Map.Map TEI.Loc (Set.Set TEI.Node)
+heapValues :: Map.Map Name (Set.Set TEI.T) -> [BoqHPTData] -> Map.Map TEI.Loc (Set.Set TEI.Node)
 heapValues variables xs = Map.unionsWith Set.union
   [ Map.singleton (TEI.Loc l) v
   | Heap l v <- xs
@@ -84,16 +87,16 @@ heapValues variables xs = Map.unionsWith Set.union
   ]
 
 -- TODO: Uniqueness check!
-typeEnvFromCreatedByData :: [CreatedByData] -> TER.TypeEnv
-typeEnvFromCreatedByData xs = TEC.calcTypeEnv $ TEI.TypeEnv heap variable functions
+typeEnvFromBoqHPTData :: [BoqHPTData] -> TER.TypeEnv
+typeEnvFromBoqHPTData xs = TEC.calcTypeEnv $ TEI.TypeEnv heap variable functions
   where
-    variables = valuesFromCreatedByData xs
+    variables = valuesFromBoqHPTData xs
     heap      = Store.Store $ heapValues variables xs
     variable  = Env.Env variables
-    functions = functionsFromCreatedByData variables xs
+    functions = functionsFromBoqHPTData variables xs
 
-functionsFromCreatedByData :: Map.Map Name (Set.Set TEI.T) -> [CreatedByData] -> Map.Map Name TEI.FunctionT
-functionsFromCreatedByData variables xs
+functionsFromBoqHPTData :: Map.Map Name (Set.Set TEI.T) -> [BoqHPTData] -> Map.Map Name TEI.FunctionT
+functionsFromBoqHPTData variables xs
   = Map.map (\(r, ps) -> FunctionT (r, parameters id ps))
   $ Map.unionsWith (\(r1, ps1) (r2, ps2) -> (r1 <> r2, Map.unionWith (<>) ps1 ps2))
       [ retOrParam
@@ -109,7 +112,7 @@ functionsFromCreatedByData variables xs
   where
     lookup' p m = fromMaybe (error ("Missing: " ++ show p)) $ Map.lookup p variables
 
-createNodeVariables :: [CreatedByData] -> Map.Map Name (Set.Set TEI.T)
+createNodeVariables :: [BoqHPTData] -> Map.Map Name (Set.Set TEI.T)
 createNodeVariables xs
   = (Map.map (Set.fromList . concatMap (uncurry toNodes) . Map.toList . Map.map nodeParams)) $ Map.unionsWith unionTags $
       [ Map.singleton v nMap
