@@ -319,9 +319,12 @@ SharedLocation(l) :-
 // NodeParameter  NP -- - - -- xx
 // ReturnValue    RV -- - - -- --
 
+NonLinearVar(n) :- CallArgument(f,_,n),   CallArgument(g,_,n), !(f=g).
+NonLinearVar(n) :- CallArgument(_,i,n),   CallArgument(_,j,n), !(i=j).
 NonLinearVar(n) :- CallArgument(_,_,n),   Move(_,n).
 NonLinearVar(n) :- CallArgument(_,_,n),   NodeArgument(_,_,n).
 NonLinearVar(n) :- CallArgument(_,_,n),   ReturnValue(_,n).
+NonLinearVar(n) :- Fetch(r,n),            Fetch(q,n),          !(r=q).
 NonLinearVar(n) :- Move(_,n),             NodeArgument(_,_,n).
 NonLinearVar(n) :- Move(_,n),             ReturnValue(_,n).
 NonLinearVar(n) :- NodeParameter(_,_,n),  ReturnValue(_,n).
