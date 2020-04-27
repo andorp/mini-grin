@@ -6,7 +6,7 @@
 .type CodeName = Variable | Function
 
 // External function (name, effectful)
-.decl External(f:Function,effectful:number,ret:SimpleType)
+.decl External(f:Function, effectful:number, ret:SimpleType)
 .decl ExternalParam(f:Function, i:number, st:SimpleType)
 
 // variable
@@ -15,6 +15,7 @@
 
 // literal value
 // example: result <- pure 1
+// QUESTION: why the type?
 .decl LitAssign(result:Variable, st:SimpleType, l:Literal)
 
 // node value
@@ -38,6 +39,33 @@
 
 // bind pattern
 // example: node@(Ctag param0 param1) <- pure input_value
+// QUESTION: what about: node @ (Ctag param0) <- f x
+/* ANSWER:
+  NodePattern(node, Ctag, node)
+  NodeParameter(node, 0, param0)
+  Call(node, f)
+  CallArgument(node, 0, x)
+*/
+/* QUESTION: is the third field of NodePattern redundant?
+Now it is only used in this when "moving" a variable:
+
+node @ (Ctag param0) <- pure x
+  NodePattern(node, Ctag)
+  NodeParameter(node, 0, param0)
+  Move(node, x)
+
+node @ (Ctag param0) <- f x
+  NodePattern(node, Ctag)
+  NodeParameter(node, 0, param0)
+  Call(node, f)
+  CallArgument(node, 0, x)
+
+node @ (Ctag param0) <- pure (Ctag 5)
+  NodePattern(node, Ctag)
+  NodeParameter(node, 0, param0)
+  Node(node, Ctag)
+  NodeArgument(node, 0, "lit:int")
+*/
 .decl NodePattern(node:Variable, t:Tag, input_value:Variable)
 .decl NodeParameter(node:Variable, i:number, parameter:Variable)
 
@@ -51,15 +79,22 @@
 //    alt_value@(Ctag param0 param1) -> basic_block_name arg0 arg1
 .decl Case(case_result:Variable, scrutinee:Variable)
 .decl Alt(case_result:Variable, alt_value:Variable, t:Tag)
+// NOTE: first could be just alt_value since it's unique
+// QUESTION: why the tag here again? Maybe just store it here, and let case_result be alt_value
 .decl AltParameter(case_result:Variable, t:Tag, i:number, parameter:Variable)
 .decl AltLiteral(case_result:Variable, alt_value:Variable, l:Literal)
 .decl AltDefault(case_result:Variable, alt_value:Variable)
 
 // pure a.k.a. return value
 // example: pure value
+// QUESTION: shouldn't this be the return value of a function?
+// QUESTION: can the return value of a function be only of form: pure <var_name> ?
 .decl ReturnValue(n:CodeName, value:Variable)
 
 // instruction ordering
+/* QUESTION: What about f x = pure x
+What is the first instruction?
+*/
 .decl FirstInst(n:CodeName, result:Variable)
 .decl NextInst(prev:Variable, next:Variable)
 
@@ -93,6 +128,11 @@
 .decl CodeNameInst(n:CodeName, v:Variable)
 .output CodeNameInst(delimiter=",")
 
+/* QUESTION: Do we really need NextInst?
+Currently, NextInst is only used to define CodeNameInst.
+Just a random thought, but maybe instruction order isn't even important,
+only the dataflow is. Dataflow is already defined by the other relations.
+*/
 CodeNameInst(n, v) :-
   FirstInst(n, v).
 CodeNameInst(n, v) :-
@@ -133,6 +173,8 @@ VarPointsTo(v,t) :-
   VarPointsTo(v0, t),
   ReachableInst(r).
 
+// QUESTION: How about the name CreatedBy?
+// It matches the previous terminology, and is a nice name for a binary relation.
 // Value Computation
 .decl Value(v:Variable, value:Variable)
 .output Value(delimiter=",")
@@ -148,6 +190,12 @@ Heap(heap_orig, sv) :-
   Value(heap, heap_orig),
   Heap(heap_orig, _),
   SharedLocation(heap).
+
+// QUESTION: don't we need this as well?
+// ANSWER: probably not, if we are not concerned with aliases (we need only the unique locations)
+// Heap(heap, sv) :-
+//   Update(_, heap, sv),
+//   SharedLocation(heap).
 
 Value(n,n) :-
   LitAssign(n,_,_).
@@ -165,6 +213,17 @@ Value(v,v) :-
   External(f,_,_),
   Call(v,f).
 
+/* QUESTION: What about the general Move case?
+It seems to me that the Value relation doesn't see through multiple moves.
+main =
+  m1 <- pure 5
+  n1.0 <- pure (CInt m1)
+  n1.1 <- pure n1.0
+  n1.2 <- pure n1.1
+  pure ()
+
+What is the Value of n1.2?
+*/
 Value(v, n) :-
   Node(n, _),
   Move(v, n).
@@ -203,7 +262,7 @@ Value(param, argval) :-
   NodeArgument(nval, i, arg),
   Value(arg, argval).
 
-// Alt value when matched on tag.
+// Alt value when matched on literal.
 Value(alt_val, scrut_val) :-
   Case(case_result, scrut),
   AltLiteral(case_result, alt_val, _),
@@ -214,6 +273,7 @@ Value(alt_val, scrut_val) :-
   Case(case_result, scrut),
   Alt(case_result, alt_val, tag),
   Value(scrut, scrut_val),
+  // NOTE: this just checks whether the alternative is possible
   Node(scrut_val, tag).
 
 // Value of alt parameter when matched on tag
@@ -225,6 +285,9 @@ Value(parameter, val) :-
   Node(scrut_val,tag),
   NodeArgument(scrut_val,i,val).
 
+// NOTE: every alternative should be related to its return value (via ReturnValue)
+// QUESTION: alt_values (altNames) might have different meaning based on the analysis, would that be a problem?
+// QUESTION: shouldn't we check for dead alternatives?
 // Result of case/alt when matched on a node.
 Value(case_result, val) :-
   Case(case_result, _),
@@ -239,6 +302,8 @@ Value(case_result, val) :-
   ReturnValue(alt_value, v),
   Value(v, val).
 
+// QUESTION: could implement liveness check here as well? (ignore alt when impossible)
+// ANSWER: would have to collect all tags of all possible origins of the scrutinee, then check whether all are covered
 // Result of case/alt when matched on the default alternative.
 Value(case_result, val) :-
   Case(case_result, _),
@@ -263,6 +328,7 @@ VariableSimpleType(n,st) :- LitAssign(n,st,_).
 VariableSimpleType(n,"Unit") :- Update(n,_,_).
 VariableSimpleType(n,st) :- External(f,_,st), Call(n,f).
 VariableSimpleType(n,st) :- ExternalParam(f,i,st), Call(r,f), CallArgument(r,i,n).
+// NOTE: that's nice!
 VariableSimpleType(n,st) :- Value(n,r), VariableSimpleType(r,st).
 
 .output VariableNodeParamType(delimiter=",")
@@ -276,6 +342,7 @@ VariableNodeParamType(n,t,i,ty)
 .output VariableNodeTag(delimiter=",")
 VariableNodeTag(n,t) :- Value(n,r), Node(r,t).
 
+// QUESTION: is this basically Value constrained by AbstractLocation? (i.e. all variables who have pointer producers?)
 .output VariableAbstractLocation(delimiter=",")
 VariableAbstractLocation(n,n) :- AbstractLocation(n).
 VariableAbstractLocation(n,v) :- Value(n,v), AbstractLocation(v).
@@ -307,7 +374,7 @@ SharedLocation(l) :-
 
 // For non-linear variables
 // A location may only become shared if it is a possible value of a nonlinear variable.
-//
+// NOTE: linear => not shared  ~   nonlinear <= shared (aggrees with the above statement)
 
 .decl NonLinearVar(v:Variable)
 .output NonLinearVar(delimiter=",")
@@ -319,6 +386,7 @@ SharedLocation(l) :-
 // NodeParameter  NP -- - - -- xx
 // ReturnValue    RV -- - - -- --
 
+// NOTE: can't we use $ for this somehow?
 NonLinearVar(n) :- CallArgument(f,_,n),   CallArgument(g,_,n), !(f=g).
 NonLinearVar(n) :- CallArgument(_,i,n),   CallArgument(_,j,n), !(i=j).
 NonLinearVar(n) :- CallArgument(_,_,n),   Move(_,n).

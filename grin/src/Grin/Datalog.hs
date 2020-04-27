@@ -205,6 +205,7 @@ convertProgram exp = do
 seqAlg :: [G.ExpF (G.Exp, DL ()) -> DL ()] -> G.ExpF (G.Exp, DL ()) -> DL ()
 seqAlg algs exp = mapM_ ($ exp) algs
 
+-- QUESTION: What is this? It doesn't interact with the AST and it has no side-effects.
 recurseAlg :: G.ExpF (G.Exp, DL ()) -> DL ()
 recurseAlg = mapM_ snd
 
@@ -298,6 +299,7 @@ emitAlg = \case
   -- call_result <- f value0 value1
   -- .decl Call(call_result:Variable, f:Function)
   -- .decl CallArgument(call_result:Variable, i:number, value:Variable)
+  -- QUESTION: Why is this AST invalid? We can express this using the current model of the DL AST.
   G.EBindF (G.SApp{},_) (G.BNodePat{}) _ -> error "Invalid AST."
   G.EBindF (G.SApp fun args, lhs) (G.BVar res) (_, rhs) -> do
     emit  $ (Call { call_result = Variable res, f = Function fun })
