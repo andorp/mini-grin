@@ -176,8 +176,8 @@ CreatedBy(v,v) :-
   External(f,_,_),
   Call(v,f).
 
-CreatedBy(v, n) :-
-  Node(n, _),
+CreatedBy(v, n_og) :-
+  CreatedBy(n, n_og),
   Move(v, n).
 
 CreatedBy(v1,v2) :-
