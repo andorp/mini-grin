@@ -295,3 +295,47 @@ sumSimple =
           ]) (BVar "e14") $
         Pure (Var "e14")
     ]
+
+{-
+prim_int_add :: T_Int64 -> T_Int64 -> T_Int64
+prim_int_print :: T_Int64 -> T_Int64 -> T_Unit
+
+add s1 s2 =
+  (CInt k1) @ _1 <- pure s1
+  (CInt k2) @ _2 <- pure s2
+  k3 <- prim_int_add $ k1 k2
+  pure k3
+
+main =
+  m1 <- pure 10
+  m2 <- pure 20
+  n1.0 <- pure (CInt m1)
+  n1.1 <- pure n1.0
+  n1.2 <- pure n1.1
+  n2 <- pure (CInt m2)
+  m3 <- add $ n1.2 n2
+  pure m3
+-}
+
+foo :: Exp 'Prg
+foo =
+  Program
+    -- type signatures of external functions must be provided at the top of teh module
+    [ External "prim_int_add" (TySimple T_Int64) [TySimple T_Int64, TySimple T_Int64] False
+    , External "prim_int_print" (TySimple T_Unit)   [TySimple T_Int64, TySimple T_Int64] True
+    ]
+    [ Def "add" ["s1", "s2"] $
+        Bind (Pure (Var "s1")) (BNodePat "_1" (Tag C "Int") ["k1"]) $
+        Bind (Pure (Var "s2")) (BNodePat "_2" (Tag C "Int") ["k2"]) $
+        Bind (App "prim_int_add" ["k1", "k2"]) (BVar "k3") $
+        Pure (Var "k3")
+    , Def "main" [] $
+        Bind (Pure (Val (VPrim (SInt64 10)))) (BVar "m1") $
+        Bind (Pure (Val (VPrim (SInt64 20)))) (BVar "m2") $
+        Bind (Pure (Val (VNode (Node (Tag C "Int") ["m1"])))) (BVar "n1.0") $
+        Bind (Pure (Var "n1.0")) (BVar "n1.1") $
+        Bind (Pure (Var "n1.1")) (BVar "n1.2") $
+        Bind (Pure (Val (VNode (Node (Tag C "Int") ["m2"])))) (BVar "n2") $
+        Bind (App "add" ["n1.2", "n2"]) (BVar "m3") $
+        Pure (Var "m3")
+    ]

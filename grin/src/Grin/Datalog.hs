@@ -126,8 +126,10 @@ data Param
 
 test :: IO ()
 test = do
-  programToFactsM "./datalog/facts" $ gexpToExp sumSimple
-  invokeSouffle "./datalog/facts" "./datalog/out" "./datalog/analysis/dead-code.dl"
+  programToFactsM "./datalog/facts/foo" $ gexpToExp foo
+  -- invokeSouffle "./datalog/facts" "./datalog/dead-code" "./datalog/analysis/dead-code.dl"
+  -- invokeSouffle "./datalog/facts" "./datalog/hpt"       "./datalog/analysis/boq-hpt.dl"
+  invokeSouffle "./datalog/facts/foo" "./datalog/lva"       "./datalog/analysis/lva.dl"
 --  print =<< readCSVFile @DeadCode "DeadVariable"  "./datalog/out/DeadVariable.csv"
 --  print =<< readCSVFile @DeadCode "DeadParameter" "./datalog/out/DeadParameter.csv"
 
