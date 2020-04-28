@@ -18,7 +18,7 @@ import Grin.TypeEnv.Result
 import Grin.Exp
   ( External(External)
   , BPat(BVar,BNodePat)
-  , CPat(NodePat, LitPat)
+  , CPat(NodePat, LitPat, DefaultPat)
   , printGrin
   )
 
@@ -339,3 +339,69 @@ foo =
         Bind (App "add" ["n1.2", "n2"]) (BVar "m3") $
         Pure (Var "m3")
     ]
+
+{-
+prim_int_add :: T_Int64 -> T_Int64 -> T_Int64
+prim_int_print :: T_Int64 -> T_Int64 -> T_Unit
+
+main =
+  k1 <- pure 10
+  n1 <- pure (CInt k1)
+  n2 <- case n1 of
+    (CInt k2) @ alt1 ->
+      n3 <- pure (COne)
+      pure n3
+    (CFoo) @ alt2 ->
+      n4 <- pure (CTwo)
+      pure n4
+    #default @ alt3 ->
+      n5 <- pure (CThree)
+      pure n5
+  k3 <- case k1 of
+    10 @ alt4 ->
+      k4 <- pure 1
+      pure k4
+    20 @ alt5 ->
+      k5 <- pure 2
+      pure k5
+    #default @ alt6 ->
+      k6 <- pure 3
+      pure k6
+  pure n2
+-}
+
+foo2 :: Exp 'Prg
+foo2 =
+  Program
+    -- type signatures of external functions must be provided at the top of teh module
+    [ External "prim_int_add" (TySimple T_Int64) [TySimple T_Int64, TySimple T_Int64] False
+    , External "prim_int_print" (TySimple T_Unit)   [TySimple T_Int64, TySimple T_Int64] True
+    ]
+    [ Def "main" [] $
+        Bind (Pure (Val (VPrim (SInt64 10)))) (BVar "k1") $
+        Bind (Pure (Val (VNode (Node (Tag C "Int") ["k1"])))) (BVar "n1") $
+        Bind (Case "n1"
+          [ Alt "alt1" (NodePat (Tag C "Int") ["k2"]) $
+              Bind (Pure (Val (VNode (Node (Tag C "One") [])))) (BVar "n3") $
+              Pure (Var "n3")
+          , Alt "alt2" (NodePat (Tag C "Foo") []) $
+              Bind (Pure (Val (VNode (Node (Tag C "Two") [])))) (BVar "n4") $
+              Pure (Var "n4")
+          , Alt "alt3" DefaultPat $
+              Bind (Pure (Val (VNode (Node (Tag C "Three") [])))) (BVar "n5") $
+              Pure (Var "n5")
+          ]) (BVar "n2") $
+        Bind (Case "k1"
+          [ Alt "alt4" (LitPat (SInt64 10)) $
+              Bind (Pure (Val (VPrim (SInt64 1)))) (BVar "k4") $
+              Pure (Var "k4")
+          , Alt "alt5" (LitPat (SInt64 20)) $
+              Bind (Pure (Val (VPrim (SInt64 2)))) (BVar "k5") $
+              Pure (Var "k5")
+          , Alt "alt6" DefaultPat $
+              Bind (Pure (Val (VPrim (SInt64 3)))) (BVar "k6") $
+              Pure (Var "k6")
+          ]) (BVar "k3") $
+        Pure (Var "n2")
+    ]
+
