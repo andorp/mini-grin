@@ -238,11 +238,12 @@ CreatedBy(parameter, val) :-
   NodeArgument(scrut_val,i,val).
 
 // NOTE: every alternative should be related to its return value (via ReturnValue)
-// QUESTION: shouldn't we check for dead alternatives?
 // Result of case/alt when matched on a node.
 CreatedBy(case_result, val) :-
   Case(case_result, scrut),
   Alt(case_result, alt_name, alt_tag),
+  CreatedBy(scrut, scrut_og),
+  Node(scrut_og, alt_tag),
   ReturnValue(alt_name, v),
   CreatedBy(v, val).
 
