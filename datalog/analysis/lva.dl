@@ -48,14 +48,14 @@
 // case + alt
 // example:
 //  case_result <- case scrut of
-//    alt_value@(Ctag param0 param1) -> basic_block_name arg0 arg1
+//    alt_name@(Ctag param0 param1) -> basic_block_name arg0 arg1
 .decl Case(case_result:Variable, scrutinee:Variable)
-.decl Alt(case_result:Variable, alt_value:Variable, t:Tag)
-// NOTE: first could be just alt_value since it's unique
-// QUESTION: why the tag here again? Maybe just store it here, and let case_result be alt_value
+.decl Alt(case_result:Variable, alt_name:Variable, t:Tag)
+// NOTE: first could be just alt_name since it's unique
+// QUESTION: why the tag here again? Maybe just store it here, and let case_result be alt_name
 .decl AltParameter(case_result:Variable, t:Tag, i:number, parameter:Variable)
-.decl AltLiteral(case_result:Variable, alt_value:Variable, l:Literal)
-.decl AltDefault(case_result:Variable, alt_value:Variable)
+.decl AltLiteral(case_result:Variable, alt_name:Variable, l:Literal)
+.decl AltDefault(case_result:Variable, alt_name:Variable)
 
 // pure a.k.a. return value
 // example: pure value
@@ -215,15 +215,15 @@ CreatedBy(param, argval) :-
   CreatedBy(arg, argval).
 
 // Alt value when matched on literal.
-CreatedBy(alt_val, scrut_val) :-
+CreatedBy(alt_name, scrut_val) :-
   Case(case_result, scrut),
-  AltLiteral(case_result, alt_val, _),
+  AltLiteral(case_result, alt_name, _),
   CreatedBy(scrut, scrut_val).
 
 // Alt value when matched on tag
-CreatedBy(alt_val, scrut_val) :-
+CreatedBy(alt_name, scrut_val) :-
   Case(case_result, scrut),
-  Alt(case_result, alt_val, tag),
+  Alt(case_result, alt_name, tag),
   CreatedBy(scrut, scrut_val),
   // NOTE: this just checks whether the alternative is possible
   Node(scrut_val, tag).
@@ -231,27 +231,26 @@ CreatedBy(alt_val, scrut_val) :-
 // CreatedBy of alt parameter when matched on tag
 CreatedBy(parameter, val) :-
   Case(case_res, scrut),
-  Alt(case_res, _alt_value, tag),
+  Alt(case_res, _alt_name, tag),
   AltParameter(case_res, tag, i, parameter),
   CreatedBy(scrut, scrut_val),
   Node(scrut_val,tag),
   NodeArgument(scrut_val,i,val).
 
 // NOTE: every alternative should be related to its return value (via ReturnValue)
-// QUESTION: alt_values (altNames) might have different meaning based on the analysis, would that be a problem?
 // QUESTION: shouldn't we check for dead alternatives?
 // Result of case/alt when matched on a node.
 CreatedBy(case_result, val) :-
   Case(case_result, _),
-  Alt(case_result, alt_value, _),
-  ReturnValue(alt_value, v),
+  Alt(case_result, alt_name, _),
+  ReturnValue(alt_name, v),
   CreatedBy(v, val).
 
 // Result of case/alt when matched on a literal.
 CreatedBy(case_result, val) :-
   Case(case_result, _),
-  AltLiteral(case_result, alt_value, _),
-  ReturnValue(alt_value, v),
+  AltLiteral(case_result, alt_name, _),
+  ReturnValue(alt_name, v),
   CreatedBy(v, val).
 
 // QUESTION: could implement liveness check here as well? (ignore alt when impossible)
@@ -259,8 +258,8 @@ CreatedBy(case_result, val) :-
 // Result of case/alt when matched on the default alternative.
 CreatedBy(case_result, val) :-
   Case(case_result, _),
-  AltDefault(case_result, alt_value),
-  ReturnValue(alt_value, v),
+  AltDefault(case_result, alt_name),
+  ReturnValue(alt_name, v),
   CreatedBy(v, val).
 
 // Type Env
