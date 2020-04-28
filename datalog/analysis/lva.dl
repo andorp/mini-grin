@@ -241,8 +241,8 @@ CreatedBy(parameter, val) :-
 // QUESTION: shouldn't we check for dead alternatives?
 // Result of case/alt when matched on a node.
 CreatedBy(case_result, val) :-
-  Case(case_result, _),
-  Alt(case_result, alt_name, _),
+  Case(case_result, scrut),
+  Alt(case_result, alt_name, alt_tag),
   ReturnValue(alt_name, v),
   CreatedBy(v, val).
 
