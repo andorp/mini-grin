@@ -352,6 +352,14 @@ NonLinearVar(n) :- NodeParameter(_,_,n),  ReturnValue(_,n).
 
 //////////////////////////// LVA //////////////////////////
 
+// NOTE: EXTRA RULE FOR EXTERNALS
+// QUESTION: Does this make sense?
+// ReturnValue(f,ret) :-
+//   Call(ret,f),
+//   External(f,_,_).
+
+
+
 .decl NodeCreatedBy(n:Variable, t:Tag, origin:Variable)
 .output NodeCreatedBy(delimeter=",")
 NodeCreatedBy(n,t,og) :- CreatedBy(n,og), Node(og,t).
@@ -372,7 +380,7 @@ Effectful(f) :- FunName(f), CodeNameInst(f,x), Effectful(x).
 .decl LiveSVal(x:Variable)
 .output LiveSVal(delimeter=",")
 
-.decl FunSimpleRetLive(x:Variable)
+.decl FunSimpleRetLive(f:CodeName)
 .output FunSimpleRetLive(delimeter=",")
 
 // TODO: what about complex return values?
@@ -418,15 +426,18 @@ f ... =
 ... =
   y <- f ...
 */
-// TODO: should probably replace with FunLive because of externals
-// QUESTION: but then two separate relations are need for FunLive as well ...
-LiveSVal(ret) :-
+// NOTE: We need this relation because of externals.
+// Externals do not have ReturnValues.
+FunSimpleRetLive(f) :-
   LiveSVal(y),
-  Call(y,f),
+  Call(y,f).
+
+LiveSVal(ret) :-
+  FunSimpleRetLive(f),
   ReturnValue(f,ret).
 
 /*
-f .. param ... =
+f ... param ... =
   ...
 ... =
   y <- f ... x ...
