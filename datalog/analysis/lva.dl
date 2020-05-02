@@ -448,7 +448,21 @@ LiveSVal(x) :-
   Call(y,f),
   CallArgument(y,i,x).
 
-
+/*
+... =
+  y <- f_ext ... x ...
+*/
+LiveSVal(x) :-
+  FunSimpleRetLive(f_ext),
+  External(f_ext,_,_),
+  Call(y,f_ext),
+  CallArgument(y,_,x).
+// NOTE: this is a context sensitive rule
+// LiveSVal(x) :-
+//   LiveSVal(y),
+//   External(f_ext,_,_),
+//   Call(y,f_ext),
+//   CallArgument(y,_,x).
 
 
 

@@ -443,6 +443,24 @@ main =
 
   pure r1
 
+Expected LiveSVal:
+a1
+alt1
+k1
+k2
+l1
+m1
+og1
+og2
+og3
+og5
+og6
+og7
+r1
+x
+y
+y.1
+
 -}
 
 simpleValues :: Exp 'Prg
