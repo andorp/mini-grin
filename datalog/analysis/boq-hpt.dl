@@ -151,6 +151,7 @@ ReachableInst(v) :-
   ReachableCode(n),
   CodeNameInst(n, v).
 
+// NOTE: For a given pointer, it shows which variable it points to. (Store origin?)
 .decl VarPointsTo(v:Variable, target:Variable)
 .output VarPointsTo(delimiter=",")
 

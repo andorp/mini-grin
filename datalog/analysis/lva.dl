@@ -116,6 +116,7 @@ ReachableInst(v) :-
   ReachableCode(n),
   CodeNameInst(n, v).
 
+// NOTE: For a given pointer, it shows which variable it points to. (Store origin?)
 .decl VarPointsTo(v:Variable, target:Variable)
 .output VarPointsTo(delimiter=",")
 
@@ -371,13 +372,76 @@ Effectful(f) :- FunName(f), CodeNameInst(f,x), Effectful(x).
 .decl LiveSVal(x:Variable)
 .output LiveSVal(delimeter=",")
 
+.decl FunSimpleRetLive(x:Variable)
+.output FunSimpleRetLive(delimeter=",")
+
 // TODO: what about complex return values?
-LiveSVal(x) :- ReturnValue("main", x).
-LiveSVal(x) :- Call(y,f), CallArgument(y,_,x), External(f,1,_).
+LiveSVal(x) :-
+  ReturnValue("main", x).
+LiveSVal(x) :-
+  Call(y,f),
+  CallArgument(y,_,x),
+  External(f,1,_).
+
+/*
+  y <- pure x
+*/
+LiveSVal(y) :-
+  LiveSVal(x),
+  Move(x,y).
+
+/*
+... =
+  res <- case scrut of
+    42 @ alt ->
+      ...
+      pure ret
+*/
+LiveSVal(ret) :-
+  LiveSVal(res),
+  AltLiteral(res,alt,_),
+  ReturnValue(alt,ret).
+
+/*
+... =
+  res <- case scrut of
+    42 @ alt -> ...
+*/
+LiveSVal(scrut) :-
+  LiveSVal(alt),
+  AltLiteral(res,alt,_),
+  Case(res, scrut).
+
+/*
+f ... =
+  pure ret
+... =
+  y <- f ...
+*/
+// TODO: should probably replace with FunLive because of externals
+// QUESTION: but then two separate relations are need for FunLive as well ...
+LiveSVal(ret) :-
+  LiveSVal(y),
+  Call(y,f),
+  ReturnValue(f,ret).
+
+/*
+f .. param ... =
+  ...
+... =
+  y <- f ... x ...
+*/
+LiveSVal(x) :-
+  LiveSVal(param),
+  FunctionParameter(f,i,param),
+  Call(y,f),
+  CallArgument(y,i,x).
 
 
-LiveSVal(origin) :- CreatedBy(x,origin), LiveSVal(x).
-// LiveSVal(x)      :- CreatedBy(x,origin), LiveSVal(origin).
 
 
-// .decl LiveNodeArg(x:Variable, t:Tag, i:number)
+
+// NOTE: Live node value
+.decl LiveNodeArg(n:Variable, t:Tag, i:number)
+.output LiveNodeArg(delimeter=",")
+
