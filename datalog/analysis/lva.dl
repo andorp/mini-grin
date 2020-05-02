@@ -380,8 +380,8 @@ Effectful(f) :- FunName(f), CodeNameInst(f,x), Effectful(x).
 .decl LiveSVal(x:Variable)
 .output LiveSVal(delimeter=",")
 
-.decl FunSimpleRetLive(f:CodeName)
-.output FunSimpleRetLive(delimeter=",")
+.decl LiveFunRetSimple(f:CodeName)
+.output LiveFunRetSimple(delimeter=",")
 
 // TODO: what about complex return values?
 LiveSVal(x) :-
@@ -428,12 +428,12 @@ f ... =
 */
 // NOTE: We need this relation because of externals.
 // Externals do not have ReturnValues.
-FunSimpleRetLive(f) :-
+LiveFunRetSimple(f) :-
   LiveSVal(y),
   Call(y,f).
 
 LiveSVal(ret) :-
-  FunSimpleRetLive(f),
+  LiveFunRetSimple(f),
   ReturnValue(f,ret).
 
 /*
@@ -453,7 +453,7 @@ LiveSVal(x) :-
   y <- f_ext ... x ...
 */
 LiveSVal(x) :-
-  FunSimpleRetLive(f_ext),
+  LiveFunRetSimple(f_ext),
   External(f_ext,_,_),
   Call(y,f_ext),
   CallArgument(y,_,x).
@@ -471,7 +471,7 @@ LiveSVal(x) :-
 .output LiveNodeArg(delimeter=",")
 
 // NOTE: this is just a helper
-.decl FunNodeRetLive(f:CodeName, t:Tag, i:number)
+.decl LiveFunRetNodeArg(f:CodeName, t:Tag, i:number)
 .output LiveNodeArg(delimeter=",")
 
 /*
@@ -520,14 +520,14 @@ f ... =
 y <- f ...
 */
 // QUESTION: Should we check whether ret is a node via CreatedBy?
-// NOTE: FunNodeRetLive is calculated here
-// just to be consistent with FunSimpleRetLive.
-FunNodeRetLive(f, tag, i) :-
+// NOTE: LiveFunRetNodeArg is calculated here
+// just to be consistent with LiveFunRetSimple.
+LiveFunRetNodeArg(f, tag, i) :-
   LiveNodeArg(y, tag, i),
   Call(y, f).
 
 LiveNodeArg(ret, tag, i) :-
-  FunNodeRetLive(f, tag, i),
+  LiveFunRetNodeArg(f, tag, i),
   ReturnValue(f, ret).
 
 /*
