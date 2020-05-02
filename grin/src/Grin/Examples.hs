@@ -405,3 +405,79 @@ foo2 =
         Pure (Var "n2")
     ]
 
+{-
+prim_int_add   :: T_Int64 -> T_Int64 -> T_Int64
+prim_int_print :: T_Int64 -> T_Int64 -> T_Unit
+
+f x y z =
+  _2 <- prim_int_print x
+  y.1 <- pure y
+  z.1 <- pure z
+  pure y.1
+
+main =
+  og1 <- pure 1
+  og2 <- pure 2
+  og3 <- pure 3
+  og4 <- pure 4
+  og5 <- pure 5
+
+  k1 <- pure og1
+  k2 <- pure k1
+  k3 <- pure k2
+  _1 <- prim_int_print k2
+
+  l1 <- f og2 og3 og4
+  m1 <- prim_int_add l1 og5
+
+  r1 <- case m1 of
+    1 @ alt1 ->
+      a1 <- pure alt1
+      pure a1
+    2 @ alt2 ->
+      a2 <- pure alt2
+      pure alt2
+    #default @ alt3 ->
+      og6 <- pure 6
+      pure og6
+
+  pure r1
+
+-}
+
+simpleValues :: Exp 'Prg
+simpleValues =
+  Program
+    -- type signatures of external functions must be provided at the top of the module
+    [ External "prim_int_add" (TySimple T_Int64) [TySimple T_Int64, TySimple T_Int64] False
+    , External "prim_int_print" (TySimple T_Unit)   [TySimple T_Int64, TySimple T_Int64] True
+    ]
+    [ Def "main" [] $
+        Bind (Pure (Val (VPrim (SInt64 1)))) (BVar "og1") $
+        Bind (Pure (Val (VPrim (SInt64 2)))) (BVar "og2") $
+        Bind (Pure (Val (VPrim (SInt64 3)))) (BVar "og3") $
+        Bind (Pure (Val (VPrim (SInt64 4)))) (BVar "og4") $
+        Bind (Pure (Val (VPrim (SInt64 5)))) (BVar "og5") $
+
+        Bind (Pure (Var "og1")) (BVar "k1") $
+        Bind (Pure (Var "k1")) (BVar "k2") $
+        Bind (Pure (Var "k2")) (BVar "k3") $
+        Bind (App "prim_int_print" ["k2"]) (BVar "_1") $
+
+        Bind (App "f" ["og2", "og3", "og4"]) (BVar "l1") $
+        Bind (App "prim_int_add" ["l1", "og5"]) (BVar "m1") $
+
+        Bind (Case "m1"
+          [ Alt "alt1" (LitPat (SInt64 1)) $
+              Bind (Pure (Var "alt1")) (BVar "a1") $
+              Pure (Var "a1")
+          , Alt "alt2" (LitPat (SInt64 2)) $
+              Bind (Pure (Var "alt2")) (BVar "a2") $
+              Pure (Var "alt2")
+          , Alt "alt3" DefaultPat $
+              Bind (Pure (Val (VPrim (SInt64 6)))) (BVar "og6") $
+              Pure (Var "og6")
+          ]) (BVar "r1") $
+
+        Pure (Var "r1")
+    ]
