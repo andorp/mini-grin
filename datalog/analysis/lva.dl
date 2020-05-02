@@ -394,9 +394,9 @@ LiveSVal(x) :-
 /*
   y <- pure x
 */
-LiveSVal(y) :-
-  LiveSVal(x),
-  Move(x,y).
+LiveSVal(x) :-
+  LiveSVal(y),
+  Move(y,x).
 
 /*
 ... =
@@ -407,7 +407,7 @@ LiveSVal(y) :-
 */
 LiveSVal(ret) :-
   LiveSVal(res),
-  AltLiteral(res,alt,_),
+  (AltLiteral(res,alt,_) ; AltDefault(res,alt)),
   ReturnValue(alt,ret).
 
 /*
@@ -417,7 +417,7 @@ LiveSVal(ret) :-
 */
 LiveSVal(scrut) :-
   LiveSVal(alt),
-  AltLiteral(res,alt,_),
+  (AltLiteral(res,alt,_) ; AltDefault(res,alt)),
   Case(res, scrut).
 
 /*

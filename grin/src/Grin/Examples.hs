@@ -435,11 +435,11 @@ main =
       a1 <- pure alt1
       pure a1
     2 @ alt2 ->
-      a2 <- pure alt2
-      pure alt2
-    #default @ alt3 ->
       og6 <- pure 6
       pure og6
+    #default @ alt3 ->
+      og7 <- pure 7
+      pure og7
 
   pure r1
 
@@ -472,11 +472,11 @@ simpleValues =
               Bind (Pure (Var "alt1")) (BVar "a1") $
               Pure (Var "a1")
           , Alt "alt2" (LitPat (SInt64 2)) $
-              Bind (Pure (Var "alt2")) (BVar "a2") $
-              Pure (Var "alt2")
-          , Alt "alt3" DefaultPat $
               Bind (Pure (Val (VPrim (SInt64 6)))) (BVar "og6") $
               Pure (Var "og6")
+          , Alt "alt3" DefaultPat $
+              Bind (Pure (Val (VPrim (SInt64 7)))) (BVar "og7") $
+              Pure (Var "og7")
           ]) (BVar "r1") $
 
         Pure (Var "r1")
