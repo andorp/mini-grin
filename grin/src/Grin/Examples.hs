@@ -452,7 +452,13 @@ simpleValues =
     [ External "prim_int_add" (TySimple T_Int64) [TySimple T_Int64, TySimple T_Int64] False
     , External "prim_int_print" (TySimple T_Unit)   [TySimple T_Int64, TySimple T_Int64] True
     ]
-    [ Def "main" [] $
+    [ Def "f" ["x", "y", "z"] $
+        Bind (App "prim_int_print" ["x"]) (BVar "_2") $
+        Bind (Pure (Var "y")) (BVar "y.1") $
+        Bind (Pure (Var "z")) (BVar "z.1") $
+        Pure (Var "y.1")
+
+    , Def "main" [] $
         Bind (Pure (Val (VPrim (SInt64 1)))) (BVar "og1") $
         Bind (Pure (Val (VPrim (SInt64 2)))) (BVar "og2") $
         Bind (Pure (Val (VPrim (SInt64 3)))) (BVar "og3") $
