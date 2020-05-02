@@ -358,7 +358,7 @@ NonLinearVar(n) :- NodeParameter(_,_,n),  ReturnValue(_,n).
 //   Call(ret,f),
 //   External(f,_,_).
 
-
+// TODO: add LiveFunParamNodeArg, LiveFunParamSimple
 
 .decl NodeCreatedBy(n:Variable, t:Tag, origin:Variable)
 .output NodeCreatedBy(delimeter=",")
@@ -470,3 +470,74 @@ LiveSVal(x) :-
 .decl LiveNodeArg(n:Variable, t:Tag, i:number)
 .output LiveNodeArg(delimeter=",")
 
+// NOTE: this is just a helper
+.decl FunNodeRetLive(f:CodeName, t:Tag, i:number)
+.output LiveNodeArg(delimeter=",")
+
+/*
+  (Ctag ... x ...) @ alias <- pure n
+*/
+LiveNodeArg(n,tag,i) :-
+  LiveSVal(x),
+  NodeParameter(alias,i,x),
+  NodePattern(alias,tag,n).
+
+/*
+  n <- pure m
+*/
+LiveNodeArg(m,tag,i) :-
+  LiveNodeArg(n,tag,i),
+  Move(n,m).
+
+/*
+  res <- case scrut of
+    (Ctag ... x ...) @ alt ->
+      ...
+*/
+LiveNodeArg(scrut, tag, i) :-
+  LiveNodeArg(alt, tag, i),
+  Alt(res, alt, tag),
+  AltParameter(res, tag, i, _x).
+
+/*
+  res <- case ... of
+    (Ctag ... x ...) @ alt ->
+      ...
+      pure ret
+*/
+// TODO: Shouldn't we set x live as well?
+LiveNodeArg(ret, tag, i) :-
+  LiveNodeArg(res, tag, i),
+  Alt(res, alt, tag),
+  AltParameter(res, tag, i, _x),
+  ReturnValue(alt, ret).
+
+/*
+f ... =
+  ...
+  pure ret
+
+y <- f ...
+*/
+// QUESTION: Should we check whether ret is a node via CreatedBy?
+// NOTE: FunNodeRetLive is calculated here
+// just to be consistent with FunSimpleRetLive.
+FunNodeRetLive(f, tag, i) :-
+  LiveNodeArg(y, tag, i),
+  Call(y, f).
+
+LiveNodeArg(ret, tag, i) :-
+  FunNodeRetLive(f, tag, i),
+  ReturnValue(f, ret).
+
+/*
+f ... param ... =
+  ...
+
+y <- f ... x ...
+*/
+LiveNodeArg(x, tag, i) :-
+  LiveNodeArg(param, tag, i),
+  FunctionParameter(f, j, param),
+  Call(y,f),
+  CallArgument(y,j,x).
