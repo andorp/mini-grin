@@ -216,7 +216,7 @@ CreatedBy(param, argval) :-
   CreatedBy(arg, argval).
 
 CreatedBy(v, n_og) :-
-  NodePattern(v, tag, n),
+  NodePattern(v, _tag, n),
   CreatedBy(n, n_og).
 
 // Alt value when matched on literal.
@@ -470,7 +470,7 @@ LiveSVal(x) :-
 
 // TODO: add similar rules for: as-patterns, and such ...
 LiveSVal(x) :-
-  LiveNodeArg(n,t,i),
+  LiveNodeArg(n,tag,i),
   Node(n,tag),
   NodeArgument(n,i,x).
 
