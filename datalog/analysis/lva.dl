@@ -468,7 +468,11 @@ LiveSVal(x) :-
 //   Call(y,f_ext),
 //   CallArgument(y,_,x).
 
-
+// TODO: add similar rules for: as-patterns, and such ...
+LiveSVal(x) :-
+  LiveNodeArg(n,t,i),
+  Node(n,tag),
+  NodeArgument(n,i,x).
 
 // NOTE: Live node value
 .decl LiveNodeArg(n:Variable, t:Tag, i:number)
