@@ -361,7 +361,7 @@ NonLinearVar(n) :- NodeParameter(_,_,n),  ReturnValue(_,n).
 // TODO: add LiveFunParamNodeArg, LiveFunParamSimple
 
 .decl NodeCreatedBy(n:Variable, t:Tag, origin:Variable)
-.output NodeCreatedBy(delimeter=",")
+.output NodeCreatedBy(delimiter=",")
 NodeCreatedBy(n,t,og) :- CreatedBy(n,og), Node(og,t).
 
 
@@ -378,10 +378,10 @@ Effectful(f) :- FunName(f), CodeNameInst(f,x), Effectful(x).
 // TODO: maybe CodeName?
 // NOTE: Live simple value
 .decl LiveSVal(x:Variable)
-.output LiveSVal(delimeter=",")
+.output LiveSVal(delimiter=",")
 
 .decl LiveFunRetSimple(f:CodeName)
-.output LiveFunRetSimple(delimeter=",")
+.output LiveFunRetSimple(delimiter=",")
 
 // TODO: what about complex return values?
 LiveSVal(x) :-
@@ -468,11 +468,11 @@ LiveSVal(x) :-
 
 // NOTE: Live node value
 .decl LiveNodeArg(n:Variable, t:Tag, i:number)
-.output LiveNodeArg(delimeter=",")
+.output LiveNodeArg(delimiter=",")
 
 // NOTE: this is just a helper
 .decl LiveFunRetNodeArg(f:CodeName, t:Tag, i:number)
-.output LiveNodeArg(delimeter=",")
+.output LiveFunRetNodeArg(delimiter=",")
 
 /*
   (Ctag ... x ...) @ alias <- pure n
