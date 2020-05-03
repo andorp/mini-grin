@@ -540,8 +540,12 @@ main =
   n6 <- pure (CThree k3 k4 k5)
 
   n56 <- case k1 of
-    1 @ alt1 -> n5
-    2 @ alt2 -> n6
+    1 @ alt1 ->
+      n5.2 <- pure n5
+      pure n5.2
+    2 @ alt2 ->
+      n6.2 <- pure n6
+      pure n6.2
 
   n7 <- f n56
   (CTwo l3 l4) @ _2 <- pure n7
