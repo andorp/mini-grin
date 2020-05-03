@@ -215,6 +215,10 @@ CreatedBy(param, argval) :-
   NodeArgument(nval, i, arg),
   CreatedBy(arg, argval).
 
+CreatedBy(v, n_og) :-
+  NodePattern(v, tag, n),
+  CreatedBy(n, n_og).
+
 // Alt value when matched on literal.
 CreatedBy(alt_name, scrut_val) :-
   Case(case_result, scrut),
