@@ -496,6 +496,7 @@ LiveNodeArg(m,tag,i) :-
 */
 LiveNodeArg(scrut, tag, i) :-
   LiveNodeArg(alt, tag, i),
+  Case(res, scrut),
   Alt(res, alt, tag),
   AltParameter(res, tag, i, _x).
 
@@ -506,10 +507,13 @@ LiveNodeArg(scrut, tag, i) :-
       pure ret
 */
 // TODO: Shouldn't we set x live as well?
+// TODO: add relation for possible alts
 LiveNodeArg(ret, tag, i) :-
   LiveNodeArg(res, tag, i),
+  Case(res, scrut),
   Alt(res, alt, tag),
-  AltParameter(res, tag, i, _x),
+  CreatedBy(scrut, scrut_og),
+  Node(scrut_og, tag),
   ReturnValue(alt, ret).
 
 /*
