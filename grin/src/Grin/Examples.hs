@@ -505,3 +505,101 @@ simpleValues =
 
         Pure (Var "r1")
     ]
+
+{- TODO: node return value in main, add heap, add default pat, add alt dependency
+prim_int_add   :: T_Int64 -> T_Int64 -> T_Int64
+prim_int_print :: T_Int64 -> T_Int64 -> T_Unit
+
+f x =
+  f.k1 <- pure 0
+  f.n3 <- case x of
+    (CTwo f.l1 f.l2) @ f.alt1 ->
+      f.n1 <- pure (CTwo f.l1 f.l1)
+      pure f.n1
+    (CThree f.l3 f.l4 f.l5) @ f.alt2 ->
+      f.n2 <- pure (CTwo f.l3 f.l4)
+      pure f.n2
+  pure f.n3
+
+
+main =
+  k1 <- pure 0
+  k2 <- pure 0
+  k3 <- pure 0
+  k4 <- pure 0
+  k5 <- pure 0
+  k6 <- pure 0
+
+  n1 <- pure (COne k1)
+  n2 <- pure n1
+  (COne l1) @ n3 <- pure n2
+  (COne l2) @ n4 <- pure n3
+  _1 <- prim_int_print l2
+
+  n5 <- pure (CTwo k2 k3)
+  n6 <- pure (CThree k3 k4 k5)
+
+  n56 <- case k1 of
+    1 @ alt1 -> n5
+    2 @ alt2 -> n6
+
+  n7 <- f n56
+  (CTwo l3 l4) @ _2 <- pure n7
+  _3 <- prim_int_print l3
+
+  pure l4
+-}
+
+nodeValues :: Exp 'Prg
+nodeValues =
+  Program
+    -- type signatures of external functions must be provided at the top of teh module
+    [ External "prim_int_add" (TySimple T_Int64) [TySimple T_Int64, TySimple T_Int64] False
+    , External "prim_int_print" (TySimple T_Unit)   [TySimple T_Int64, TySimple T_Int64] True
+    ]
+    [ Def "f" ["x"] $
+        Bind (Pure (Val (VPrim (SInt64 0)))) (BVar "f.k1") $
+        Bind (Case "x"
+          [ Alt "f.alt1" (NodePat (Tag C "Two") ["f.l1", "f.l2"]) $
+              Bind (Pure (Val (VNode (Node (Tag C "Two") ["f.l1", "f.l1"])))) (BVar "f.n1") $
+              Pure (Var "f.n1")
+          , Alt "f.alt2" (NodePat (Tag C "Three") ["f.l3", "f.l4", "f.l5"]) $
+              Bind (Pure (Val (VNode (Node (Tag C "Two") ["f.l3", "f.l4"])))) (BVar "f.n2") $
+              Pure (Var "f.n2")
+          ]) (BVar "f.n3") $
+        Pure (Var "f.n3")
+
+    , Def "main" [] $
+        Bind (Pure (Val (VPrim (SInt64 0)))) (BVar "k1") $
+        Bind (Pure (Val (VPrim (SInt64 0)))) (BVar "k2") $
+        Bind (Pure (Val (VPrim (SInt64 0)))) (BVar "k3") $
+        Bind (Pure (Val (VPrim (SInt64 0)))) (BVar "k4") $
+        Bind (Pure (Val (VPrim (SInt64 0)))) (BVar "k5") $
+        Bind (Pure (Val (VPrim (SInt64 0)))) (BVar "k6") $
+
+
+        Bind (Pure (Val (VNode (Node (Tag C "One") ["k1"])))) (BVar "n1") $
+        Bind (Pure (Var "n1")) (BVar "n2") $
+        Bind (Pure (Var "n2")) (BNodePat "n3" (Tag C "One") ["l1"]) $
+        Bind (Pure (Var "n3")) (BNodePat "n4" (Tag C "One") ["l2"]) $
+        Bind (App "prim_int_print" ["l2"]) (BVar "_1") $
+
+
+        Bind (Pure (Val (VNode (Node (Tag C "Two") ["k2", "k3"])))) (BVar "n5") $
+        Bind (Pure (Val (VNode (Node (Tag C "Three") ["k3", "k4", "K5"])))) (BVar "n6") $
+
+        Bind (Case "k1"
+          [ Alt "alt1" (LitPat (SInt64 1)) $
+              Bind (Pure (Var "n5")) (BVar "n5.2") $
+              Pure (Var "n5.2")
+          , Alt "alt2" (LitPat (SInt64 2)) $
+              Bind (Pure (Var "n6")) (BVar "n6.2") $
+              Pure (Var "n6.2")
+          ]) (BVar "n56") $
+
+        Bind (App "f" ["n56"]) (BVar "n7") $
+        Bind (Pure (Var "n7")) (BNodePat "_2" (Tag C "Two") ["l3", "l4"]) $
+        Bind (App "prim_int_print" ["l3"]) (BVar "_3") $
+
+        Pure (Var "l4")
+    ]
