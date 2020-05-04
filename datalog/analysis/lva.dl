@@ -491,6 +491,21 @@ LiveNodeArg(n,tag,i) :-
   NodePattern(alias,tag,n).
 
 /*
+  (...) @ alias <- pure n
+*/
+LiveNodeArg(n,tag,i) :-
+  LiveNodeArg(alias, tag, i),
+  NodePattern(alias, tag, n).
+
+/*
+  (Ctag ... x ...) @ alias <- pure n
+*/
+LiveNodeArg(n, tag, i) :-
+  LiveSVal(x),
+  NodePattern(alias, tag, n),
+  NodeParameter(alias, i, x).
+
+/*
   n <- pure m
 */
 LiveNodeArg(m,tag,i) :-
@@ -499,7 +514,7 @@ LiveNodeArg(m,tag,i) :-
 
 /*
   res <- case scrut of
-    (Ctag ... x ...) @ alt ->
+    (Ctag ...) @ alt ->
       ...
 */
 LiveNodeArg(scrut, tag, i) :-
@@ -509,20 +524,55 @@ LiveNodeArg(scrut, tag, i) :-
   AltParameter(res, tag, i, _x).
 
 /*
-  res <- case ... of
-    (Ctag ... x ...) @ alt ->
+  res <- case scrut of
+    (Ctag ... x ...) @ ... ->
+      ...
+*/
+LiveNodeArg(scrut, tag, i) :-
+  LiveSVal(x),
+  Case(res, scrut),
+  AltParameter(res, tag, i, x).
+
+/*
+  res <- case scrut of
+    (Calt_tag ...) @ alt ->
       ...
       pure ret
 */
-// TODO: Shouldn't we set x live as well?
 // TODO: add relation for possible alts
-LiveNodeArg(ret, tag, i) :-
-  LiveNodeArg(res, tag, i),
+LiveNodeArg(ret, res_tag, i) :-
+  LiveNodeArg(res, res_tag, i),
   Case(res, scrut),
-  Alt(res, alt, tag),
+  Alt(res, alt, alt_tag),
+  ReturnValue(alt, ret),
+  // NOTE: the alt is possible
   CreatedBy(scrut, scrut_og),
-  Node(scrut_og, tag),
-  ReturnValue(alt, ret).
+  Node(scrut_og, alt_tag),
+  // NOTE: Only propagate the liveness to the return values
+  // that have common tags with the result.
+  CreatedBy(ret, ret_og),
+  Node(ret_og, res_tag).
+
+/*
+  res <- case ... of
+    42 @ alt ->
+      ...
+      pure ret
+  OR
+  res <- case ... of
+  #default @ alt ->
+    ...
+    pure ret
+*/
+LiveNodeArg(ret, res_tag, i) :-
+  LiveNodeArg(res, res_tag, i),
+  Case(res, _scrut),
+  (AltLiteral(res, alt, _lit) ; AltDefault(res, alt)),
+  ReturnValue(alt, ret),
+  // NOTE: Only propagate the liveness to the return values
+  // that have common tags with the result.
+  CreatedBy(ret, ret_og),
+  Node(ret_og, res_tag).
 
 /*
 f ... =
@@ -553,3 +603,31 @@ LiveNodeArg(x, tag, i) :-
   FunctionParameter(f, j, param),
   Call(y,f),
   CallArgument(y,j,x).
+
+.decl PointerOrigin(p:Variable, q:Variable)
+.output PointerOrigin(delimiter=",")
+
+// NOTE: pointer origin
+// NOTE: Heap locations are identified by the varable
+// the pointer is bound to (created by a store).
+PointerOrigin(p,q) :-
+  Store(q,_),
+  CreatedBy(p,q).
+
+.decl LiveHeapNodeArg(loc:Variable, t:Tag, i:number)
+.output LiveHeapNodeArg(delimiter=",")
+
+LiveHeapNodeArg(q,tag,i) :-
+  LiveNodeArg(n,tag,i),
+  Fetch(n,p),
+  PointerOrigin(p,q).
+
+LiveNodeArg(n,tag,i) :-
+  LiveHeapNodeArg(p,tag,i),
+  Store(q,n),
+  PointerOrigin(p,q).
+
+LiveNodeArg(n,tag,i) :-
+  LiveHeapNodeArg(p,tag,i),
+  Update(_,q,n),
+  PointerOrigin(p,q).

@@ -532,8 +532,10 @@ main =
 
   n1 <- pure (COne k1)
   n2 <- pure n1
-  (COne l1) @ n3 <- pure n2
-  (COne l2) @ n4 <- pure n3
+  (COne l1) @ _01 <- pure n2
+  n3 <- pure (COne l1)
+  n4 <- pure n3
+  (COne l2) @ _02 <- pure n4
   _1 <- prim_int_print l2
 
   n5 <- pure (CTwo k2 k3)
@@ -584,8 +586,10 @@ nodeValues =
 
         Bind (Pure (Val (VNode (Node (Tag C "One") ["k1"])))) (BVar "n1") $
         Bind (Pure (Var "n1")) (BVar "n2") $
-        Bind (Pure (Var "n2")) (BNodePat "n3" (Tag C "One") ["l1"]) $
-        Bind (Pure (Var "n3")) (BNodePat "n4" (Tag C "One") ["l2"]) $
+        Bind (Pure (Var "n2")) (BNodePat "_01" (Tag C "One") ["l1"]) $
+        Bind (Pure (Val (VNode (Node (Tag C "One") ["l1"])))) (BVar "n3") $
+        Bind (Pure (Var "n3")) (BVar "n4") $
+        Bind (Pure (Var "n4")) (BNodePat "_02" (Tag C "One") ["l2"]) $
         Bind (App "prim_int_print" ["l2"]) (BVar "_1") $
 
 
